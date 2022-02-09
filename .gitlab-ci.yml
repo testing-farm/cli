@@ -1,0 +1,43 @@
+---
+stages:
+  - test
+
+# TODO: cannot use quay.io/testing-farm/python-ci-image due to outdated tox
+image: "quay.io/fedora/fedora:35"
+
+#
+# Mark tests to run for merge requests
+#
+.merge-request:
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+container:
+  extends: .merge-request
+  stage: test
+  image: quay.io/buildah/stable:latest
+  script:
+    - dnf -y install make
+    - make build
+
+pre-commit:
+  extends: .merge-request
+  stage: test
+  script:
+    - dnf -y install gcc git make pre-commit python-devel
+    - make pre-commit
+
+tox:
+  extends: .merge-request
+  stage: test
+  script:
+    - dnf -y install make poetry tox
+    - make tox
+
+# TODO: enable once working
+# tmt:
+#   extends: .merge-request
+#   stage: test
+#   image: quay.io/testing-farm/cli:latest
+#   script:
+#     - testing-farm request

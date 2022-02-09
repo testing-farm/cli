@@ -1,0 +1,2 @@
+summary: Test version command
+test: ./test.sh

@@ -1,0 +1,15 @@
+# Distribution / packaging
+.git
+tests
+plans
+
+# Tools
+.pyre
+
+# Python
+**/__pycache__
+**/*.egg-info
+**/*.pyc
+
+# Temporary
+**/*~

@@ -1,0 +1,2 @@
+summary: Test request command
+test: ./test.sh

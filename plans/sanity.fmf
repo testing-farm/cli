@@ -1,0 +1,12 @@
+---
+summary: Sanity test plan
+
+discover:
+  how: fmf
+
+provision:
+  how: container
+  image: quay.io/testing-farm/cli:latest
+
+execute:
+  how: tmt

@@ -1,0 +1,30 @@
+:toc:
+
+= Testing Farm CLI
+
+Testing Farm CLI tool.
+
+== Installation
+
+[source,shell]
+....
+poetry install
+....
+
+== Usage
+
+=== Printing tool version
+
+[source,shell]
+....
+testing-farm version
+....
+
+== Development
+
+To run all tests:
+
+[source,shell]
+....
+make tests
+....

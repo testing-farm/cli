@@ -1,9 +1,9 @@
 ---
 stages:
+  - build
   - test
 
-# TODO: cannot use quay.io/testing-farm/python-ci-image due to outdated tox
-image: "quay.io/fedora/fedora:35"
+image: quay.io/testing-farm/python-ci-image:2022-03-12
 
 #
 # Mark tests to run for merge requests
@@ -14,30 +14,32 @@ image: "quay.io/fedora/fedora:35"
 
 container:
   extends: .merge-request
-  stage: test
+  stage: build
   image: quay.io/buildah/stable:latest
   script:
-    - dnf -y install make
-    - make build
+    - dnf -y install make poetry python
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - IMAGE_TAG=$CI_PIPELINE_ID make build
+    - IMAGE_TAG=$CI_PIPELINE_ID make push
 
 pre-commit:
   extends: .merge-request
   stage: test
+  needs: []
   script:
-    - dnf -y install gcc git make pre-commit python-devel
     - make pre-commit
 
 tox:
   extends: .merge-request
   stage: test
+  needs: []
   script:
-    - dnf -y install make poetry tox
     - make tox
 
-# TODO: enable once working
-# tmt:
-#   extends: .merge-request
-#   stage: test
-#   image: quay.io/testing-farm/cli:latest
-#   script:
-#     - testing-farm request
+tmt:
+  extends: .merge-request
+  stage: test
+  needs: ["container"]
+  image: quay.io/testing-farm/cli:latest
+  script:
+    - testing-farm request -e IMAGE_TAG=$CI_PIPELINE_ID --git-url https://gitlab.com/testing-farm/cli.git --git-ref $CI_MERGE_REQUEST_REF_PATH

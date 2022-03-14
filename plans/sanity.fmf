@@ -4,9 +4,12 @@ summary: Sanity test plan
 discover:
   how: fmf
 
+environment:
+  IMAGE_TAG: latest
+
 provision:
   how: container
-  image: quay.io/testing-farm/cli:latest
+  image: quay.io/testing-farm/cli:${IMAGE_TAG}
 
 execute:
   how: tmt

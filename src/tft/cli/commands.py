@@ -1,0 +1,250 @@
+# Copyright Contributors to the Testing Farm project.
+# SPDX-License-Identifier: Apache-2.0
+
+import os
+import shutil
+import subprocess
+import time
+import urllib.parse
+from typing import Any, Dict, List, Optional
+
+import pkg_resources
+import requests
+import typer
+
+from tft.cli.config import settings
+from tft.cli.utils import (
+    blue,
+    cmd_output_or_exit,
+    exit_error,
+    options_to_dict,
+    uuid_valid,
+)
+
+cli_version: str = pkg_resources.get_distribution("tft-cli").version
+
+TestingFarmRequestV1: Dict[str, Any] = {'api_key': None, 'test': {}, 'environments': None}
+Environments: List[Dict[str, Any]] = [{'arch': None, 'os': None, 'pool': None}]
+TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
+TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
+
+
+def watch(id: str = typer.Option(..., help="Request ID to watch")):
+    """Watch request for completion."""
+
+    if not uuid_valid(id):
+        exit_error("invalid request id")
+
+    get_url = urllib.parse.urljoin(settings.api_url, f"/v0.1/requests/{id}")
+    current_state: str = ""
+
+    typer.secho(f"🔎 api {blue(get_url)}")
+
+    artifacts_shown = False
+
+    while True:
+        response = requests.get(get_url)
+
+        if response.status_code == 404:
+            exit_error("request with given ID not found")
+        if response.status_code != 200:
+            exit_error(f"failed to get request: {response.text}")
+
+        request = response.json()
+
+        state = request["state"]
+
+        if state == current_state:
+            continue
+
+        current_state = state
+
+        if state == "new":
+            typer.secho(f"👶 request is {blue('waiting to be queued')}")
+
+        elif state == "queued":
+            typer.secho(f"👷 request is {blue('queued')}")
+
+        elif state == "running":
+            typer.secho(f"🚀 request is {blue('running')}")
+            typer.secho(f"🚢 artifacts {blue(request['run']['artifacts'])}")
+            artifacts_shown = True
+
+        elif state == "complete":
+            if not artifacts_shown:
+                typer.secho(f"🚢 artifacts {blue(request['run']['artifacts'])}")
+
+            overall = request["result"]["overall"]
+            if overall in ["passed", "skipped"]:
+                typer.secho("✅ tests passed", fg=typer.colors.GREEN)
+                raise typer.Exit()
+
+            if overall in ["failed", "error", "unknown"]:
+                typer.secho(f"❌ tests {overall}", fg=typer.colors.RED)
+                if overall == "error":
+                    typer.secho(f"{request['result']['summary']}", fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+
+        elif state == "error":
+            typer.secho(f"📛 pipeline error\n{request['result']['summary']}", fg=typer.colors.RED)
+            raise typer.Exit(code=2)
+
+        time.sleep(settings.WATCH_TICK)
+
+
+def version():
+    """Print CLI version"""
+    typer.echo(f"{cli_version}")
+
+
+def request(
+    api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
+    test_type: Optional[str] = typer.Option(None, help="Test type to use, if not set autodetected."),
+    tmt_plan_regex: Optional[str] = typer.Option(
+        None, "--plan", help="Regex for selecting plans, by default all plans are selected."
+    ),
+    git_url: Optional[str] = typer.Option(
+        None, help="URL of the GIT repository to test. If not set autodetected from current git repository."
+    ),
+    git_ref: Optional[str] = typer.Option(
+        None, help="GIT ref or branch to test. If not set autodetected from current git repository."
+    ),
+    arch: str = typer.Option(
+        "x86_64", help="URL of the GIT repository to test. If not set autodetected from current git repository."
+    ),
+    compose: Optional[str] = typer.Option(
+        None,
+        help="Compose used to provision system-under-test. If not set tests will expect 'container' provision method specified in tmt plans.",  # noqa
+    ),
+    pool: Optional[str] = typer.Option(
+        None,
+        help="Force pool to provision. By default the most suited pool is used according to the hardware requirements specified in tmt plans.",  # noqa
+    ),
+    tmt_context: Optional[List[str]] = typer.Option(
+        None, "-c", "--context", metavar="key=value", help="Context variables to pass to `tmt`."
+    ),
+    variables: Optional[List[str]] = typer.Option(
+        None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
+    ),
+    secrets: Optional[List[str]] = typer.Option(
+        None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
+    ),
+    no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
+):
+    """
+    Request testing from Testing Farm.
+
+    Environment variables:
+
+        TESTING_FARM_API_URL            - Testing Farm API URL
+        TESTING_FARM_API_TOKEN          - API token used to authenticate.
+    """
+    git_available = bool(shutil.which("git"))
+
+    # check for token
+    if not settings.API_TOKEN:
+        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
+
+    # check for uncommited changes
+    if git_available:
+        try:
+            subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
+            subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as process:
+            if 'fatal:' not in str(process.stdout):
+                exit_error("uncommited changes found in current git repository, cannot continue")
+
+    # resolve git repository details
+    if not git_url:
+        if not git_available:
+            exit_error("no git url defined")
+        git_url = cmd_output_or_exit("git remote get-url origin", "could not auto-detect git url")
+        # use https instead git when auto-detected
+        assert git_url
+        git_url = git_url.replace('git@gitlab.com:', 'https://gitlab.com/')
+
+    if not git_ref:
+        if not git_available:
+            exit_error("no git ref defined")
+        git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")
+
+        # in case we have a commit checked out, not a named branch
+        if git_ref == "HEAD":
+            git_ref = cmd_output_or_exit("git rev-parse HEAD", "could not autodetect git ref")
+
+    # detect test type from local files
+    if not test_type:
+        if os.path.exists(".fmf/version"):
+            test_type = "fmf"
+        elif os.path.exists("tests/tests.yml"):
+            test_type = "sti"
+        else:
+            exit_error("no test type defined")
+
+    # make typing happy
+    assert git_url is not None
+    assert git_ref is not None
+
+    # STI is not supported against a container
+    if test_type == "sti" and compose == "container":
+        exit_error("container based testing is not available for 'sti' test type")
+
+    typer.echo(f"📦 repository {blue(git_url)} ref {blue(git_ref)}")
+
+    pool_info = f"via pool {blue(pool)}" if pool else ""
+    typer.echo(f"💻 {blue(compose or 'container image in plan')} on {blue(arch)} {pool_info}")
+
+    # test details
+    test = TestTMT if test_type == "fmf" else TestSTI
+    test["url"] = git_url
+    test["ref"] = git_ref
+
+    if tmt_plan_regex:
+        test["name"] = tmt_plan_regex
+
+    # environment details
+    environments = Environments
+    environments[0]["arch"] = arch
+    environments[0]["pool"] = pool
+
+    if compose:
+        environments[0]["os"] = {"compose": compose}
+
+    if secrets:
+        environments[0]["secrets"] = options_to_dict("environment secrets", secrets)
+
+    if tmt_context:
+        environments[0]["tmt"] = {"context": options_to_dict("tmt context", tmt_context)}
+
+    if variables:
+        environments[0]["variables"] = options_to_dict("environment variables", variables)
+
+    # create final request
+    request = TestingFarmRequestV1
+    request["api_key"] = settings.API_TOKEN
+    if test_type == "fmf":
+        request["test"]["fmf"] = test
+    else:
+        request["test"]["sti"] = test
+    request["environments"] = environments
+
+    # submit request to Testing Farm
+    post_url = urllib.parse.urljoin(settings.api_url, "v0.1/requests")
+
+    # handle errors
+    response = requests.post(post_url, json=request)
+    if response.status_code == 404:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 400:
+        exit_error("Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+
+    if response.status_code != 200:
+        exit_error("Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    if no_wait:
+        typer.Exit()
+
+    # watch
+    typer.secho("💡 waiting for request to finish, use ctrl+c to skip", fg=typer.colors.BRIGHT_YELLOW)
+    watch(response.json()['id'])

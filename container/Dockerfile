@@ -1,33 +1,15 @@
 # build image
-FROM python:3.9 as build-stage
-RUN pip install "poetry==1.1.12"
+FROM python:3.9.10-alpine
 
-RUN python -m venv /venv
-ENV VIRTUAL_ENV=/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# bash - required to run tmt tests against the container
+# git  - required for auto-detection
+RUN apk add --no-cache bash git
 
-WORKDIR /app
-COPY pyproject.toml poetry.lock /app
-RUN poetry install --no-dev --no-root --no-interaction
+COPY dist/tft_cli*.whl .
 
-COPY src /app/src
-RUN poetry install --no-dev --no-interaction
+RUN pip install tft_cli*.whl && rm -f tft_cli*.whl
 
-# production base image containing only the bare minimum
-FROM python:3.9-slim as final
-
-# Activate the virtual environment
-ENV VIRTUAL_ENV=/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-WORKDIR /app
-
-# Copy only application dependencies contained in the virtual environment
-COPY --from=build-stage /venv /venv
-COPY [".", "/app"]
-
-# Workaround for Debian's posix default shell
-# https://github.com/psss/tmt/issues/1047
-RUN rm /bin/sh; cp /bin/bash /bin/sh
+WORKDIR /code
 
 # Cannot set entrypoint as tmt does not work without entrypoint set to bash
 # https://github.com/psss/tmt/issues/1046

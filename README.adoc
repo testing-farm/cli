@@ -2,14 +2,47 @@
 
 = Testing Farm CLI
 
-Testing Farm CLI tool.
+https://docs.testing-farm.io[Testing Farm] CLI tool.
+
+== Use cases
+
+Currently the CLI supports:
+
+* submitting a test request
+
+* watch a request for completion
+
+* get a request completion report
 
 == Installation
 
+=== Container
+
+You can run the tool using the official image via a small wrapper script.
+
 [source,shell]
 ....
-poetry install
+curl -Lo ~/bin/testing-farm "https://gitlab.com/testing-farm/cli/-/raw/main/container/testing-farm"
+chmod +x ~/bin/testing-farm
 ....
+
+=== Pip
+
+You can local install the tool directly from PyPi.
+
+[source,shell]
+....
+pip install --user tft-cli
+....
+
+== Onboarding to Testing Farm
+
+[NOTE]
+====
+Required only if you will be submitting requests to Testing Farm.
+====
+
+Before using the CLI for submitting requests, you will need to https://docs.testing-farm.io/general/0.1/onboarding.html[onboard and get an API key].
 
 == Usage
 
@@ -20,11 +53,71 @@ poetry install
 testing-farm version
 ....
 
+=== Request new testing
+
+The `request` command makes it easy to request testing on Testing Farm.
+
+Just clone a repository with tmt tests and try it out. Most of the options will be autodetected:
+
+[source,shell]
+....
+testing-farm request
+....
+
+[TIP]
+====
+By default the execution will use `container` provisioner and the default `tmt` container - `fedora`. If you want to test on a VM, define it via `--compose` option.
+
+List of composes for Public Ranch can be found https://api.dev.testing-farm.io/v0.1/composes[here].
+====
+
+See the `--help` for more options.
+
+=== Watch an existing request
+
+To watch an existing request for completion or get its completion status, use the `watch` command.
+
+[source,shell]
+....
+testing-farm watch --id <REQUEST_ID>
+....
+
 == Development
+
+=== Install via Poetry
+
+If you want to develop `testing-farm` cli tool, install it via https://python-poetry.org/docs/#installation[Poetry].
+
+[source,shell]
+....
+poetry install
+....
+
+=== Tests
+
+Testing of the project is currently done via:
+
+* `pre-commit` - for static analysis
+* https://tmt.readthedocs.org[`tmt`] - for functional and integration testing
+* `tox` - for typing and (later) unit tests
 
 To run all tests:
 
 [source,shell]
 ....
-make tests
+make test
 ....
+
+To run `pre-commit`/`tmt`/`tox` tests only:
+
+[source,shell]
+....
+make pre-commit
+make tmt
+make tox
+....
+
+[IMPORTANT]
+====
+`tmt` testing is running against a container image built from the repository checkout. When rerunning `tmt` tests only, make sure to `make build` if you have also `cli` code changes or updated the code, as they will not be picked up automatically.
+====

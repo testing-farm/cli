@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# default image to run
+IMAGE=${IMAGE:-quay.io/testing-farm/cli:latest}
+
+# check for podman
+if ! command -v podman &>/dev/null; then
+    echo "⛔ podman not found, it is required for the tool to run."
+    exit 255
+fi
+
+# if in git repository, volume mount it
+if git rev-parse --git-dir &>/dev/null; then
+    GIT_DIR=$(readlink -f $(git rev-parse --git-dir))
+    MOUNT_GIT="-v ${GIT_DIR%.git}:/code:Z"
+fi
+
+# image update
+if [ "$1" == "update" ]; then
+    podman pull $IMAGE
+    exit 0
+fi
+
+# run the tool
+podman run -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $IMAGE testing-farm $@

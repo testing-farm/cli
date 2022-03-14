@@ -1,0 +1,2 @@
+summary: Test watch command
+test: ./test.sh

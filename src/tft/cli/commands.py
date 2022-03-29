@@ -243,7 +243,7 @@ def request(
         exit_error("Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     if no_wait:
-        typer.Exit()
+        raise typer.Exit()
 
     # watch
     typer.secho("💡 waiting for request to finish, use ctrl+c to skip", fg=typer.colors.BRIGHT_YELLOW)

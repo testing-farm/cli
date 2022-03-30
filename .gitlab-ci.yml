@@ -1,7 +1,8 @@
 ---
 stages:
-  - build
-  - test
+  - 📦 build
+  - 🔎 test
+  - 🚀 deploy
 
 image: quay.io/testing-farm/python-ci-image:2022-03-12
 
@@ -12,9 +13,19 @@ image: quay.io/testing-farm/python-ci-image:2022-03-12
   rules:
     - if: $CI_MERGE_REQUEST_IID
 
+#
+# Mark tests to run on merge to main
+#
+.deploy:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+#
+# 📦 build
+#
 container:
   extends: .merge-request
-  stage: build
+  stage: 📦 build
   image: quay.io/buildah/stable:latest
   script:
     - dnf -y install make poetry python
@@ -22,24 +33,51 @@ container:
     - IMAGE_TAG=$CI_PIPELINE_ID make build
     - IMAGE_TAG=$CI_PIPELINE_ID make push
 
+#
+# 🔎 test
+#
 pre-commit:
   extends: .merge-request
-  stage: test
+  stage: 🔎 test
   needs: []
   script:
     - make pre-commit
 
 tox:
   extends: .merge-request
-  stage: test
+  stage: 🔎 test
   needs: []
   script:
     - make tox
 
 tmt:
   extends: .merge-request
-  stage: test
+  stage: 🔎 test
   needs: ["container"]
   image: quay.io/testing-farm/cli:latest
   script:
     - testing-farm request -e IMAGE_TAG=$CI_PIPELINE_ID --git-url https://gitlab.com/testing-farm/cli.git --git-ref $CI_MERGE_REQUEST_REF_PATH
+
+#
+# 🚀 deploy
+#
+publish/container/latest:
+  extends: .deploy
+  stage: 🚀 deploy
+  image: quay.io/buildah/stable:latest
+  script:
+    - dnf -y install make poetry python
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - IMAGE_TAG=latest make build
+    - IMAGE_TAG=latest make push
+
+publish/container/version:
+  extends: .deploy
+  stage: 🚀 deploy
+  image: quay.io/buildah/stable:latest
+  script:
+    - dnf -y install make poetry python
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - export VERSION="v$(poetry version -s)-$CI_COMMIT_SHORT_SHA"
+    - IMAGE_TAG=$VERSION make build
+    - IMAGE_TAG=$VERSION make push

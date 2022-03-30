@@ -15,6 +15,9 @@ testing-farm = "tft.cli.tool:app"
 [tool.poetry.dependencies]
 python = "^3.9"
 typer = "^0.4.0"
+# click 8.1.0 broke typer 0.4.0
+# https://github.com/tiangolo/typer/pull/375
+click = "~8.0.4"
 dynaconf = "^3.1.7"
 colorama = "^0.4.4"
 requests = "^2.27.1"

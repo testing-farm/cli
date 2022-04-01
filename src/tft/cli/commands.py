@@ -29,7 +29,10 @@ TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
 
-def watch(id: str = typer.Option(..., help="Request ID to watch")):
+def watch(
+    id: str = typer.Option(..., help="Request ID to watch"),
+    no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
+):
     """Watch request for completion."""
 
     if not uuid_valid(id):
@@ -39,6 +42,9 @@ def watch(id: str = typer.Option(..., help="Request ID to watch")):
     current_state: str = ""
 
     typer.secho(f"🔎 api {blue(get_url)}")
+
+    if not no_wait:
+        typer.secho("💡 waiting for request to finish, use ctrl+c to skip", fg=typer.colors.BRIGHT_YELLOW)
 
     artifacts_shown = False
 
@@ -88,6 +94,9 @@ def watch(id: str = typer.Option(..., help="Request ID to watch")):
         elif state == "error":
             typer.secho(f"📛 pipeline error\n{request['result']['summary']}", fg=typer.colors.RED)
             raise typer.Exit(code=2)
+
+        if no_wait:
+            raise typer.Exit()
 
         time.sleep(settings.WATCH_TICK)
 
@@ -242,9 +251,5 @@ def request(
     if response.status_code != 200:
         exit_error("Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
-    if no_wait:
-        raise typer.Exit()
-
     # watch
-    typer.secho("💡 waiting for request to finish, use ctrl+c to skip", fg=typer.colors.BRIGHT_YELLOW)
-    watch(response.json()['id'])
+    watch(response.json()['id'], no_wait)

@@ -147,12 +147,13 @@ def request(
 
     # check for uncommited changes
     if git_available:
-        try:
-            subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
-            subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as process:
-            if 'fatal:' not in str(process.stdout):
-                exit_error("uncommited changes found in current git repository, cannot continue")
+        if not git_url:
+            try:
+                subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
+                subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as process:
+                if 'fatal:' not in str(process.stdout):
+                    exit_error("uncommited changes found in current git repository, cannot continue")
 
     # resolve git repository details
     if not git_url:

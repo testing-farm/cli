@@ -155,7 +155,7 @@ def request(
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
 
     # check for uncommited changes
-    if git_available:
+    if git_available and not git_url:
         try:
             subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
             subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)

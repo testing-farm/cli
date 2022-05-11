@@ -28,6 +28,24 @@ egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 egrep "💻 container image in plan on x86_64" output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
+# test GitHub https mapping
+git remote set-url origin git@github.com:testing-farm/cli
+testing-farm request | tee output
+egrep "📦 repository https://github.com/testing-farm/cli ref main" output
+
+# test GitLab https mapping
+git remote set-url origin git@gitlab.com:testing-farm/cli
+testing-farm request | tee output
+egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
+
+# test Pagure https mapping
+git remote set-url origin ssh://git@pagure.io/testing-farm/cli
+testing-farm request | tee output
+egrep "📦 repository https://pagure.io/testing-farm/cli ref main" output
+
+# reset origin
+git remote set-url origin https://gitlab.com/testing-farm/cli
+
 # test exit code on invalid token
 set +e
 testing-farm request

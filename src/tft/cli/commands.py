@@ -30,6 +30,7 @@ TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
 
 def watch(
+    api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
     id: str = typer.Option(..., help="Request ID to watch"),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
 ):
@@ -38,7 +39,7 @@ def watch(
     if not uuid_valid(id):
         exit_error("invalid request id")
 
-    get_url = urllib.parse.urljoin(settings.api_url, f"/v0.1/requests/{id}")
+    get_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{id}")
     current_state: str = ""
 
     typer.secho(f"🔎 api {blue(get_url)}")
@@ -238,7 +239,7 @@ def request(
     request["environments"] = environments
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(settings.api_url, "v0.1/requests")
+    post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 
     # handle errors
     response = requests.post(post_url, json=request)
@@ -252,4 +253,4 @@ def request(
         exit_error("Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
-    watch(response.json()['id'], no_wait)
+    watch(api_url, response.json()['id'], no_wait)

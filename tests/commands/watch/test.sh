@@ -34,5 +34,9 @@ egrep "^🔎 api https://api.dev.testing-farm.io/v0.1/requests/50b94e05-1396-473
 egrep "^📛 pipeline error$" output
 egrep "^Test environment installation failed: reason unknown, please escalate$" output
 
+# api url
+testing-farm watch --api-url https://api.stage.testing-farm.io --id 50b94e05-1396-473f-819a-9bdbd17e8e54 | tee output
+egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -141,6 +141,9 @@ def request(
         None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
     ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
+    worker_image: Optional[str] = typer.Option(
+        None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
+    ),
 ):
     """
     Request testing from Testing Farm.
@@ -241,6 +244,10 @@ def request(
     else:
         request["test"]["sti"] = test
     request["environments"] = environments
+
+    # worker image
+    if worker_image:
+        request["settings"] = {"worker": {"image": worker_image}}
 
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")

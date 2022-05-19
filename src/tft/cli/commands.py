@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -169,8 +170,11 @@ def request(
             exit_error("no git url defined")
         git_url = cmd_output_or_exit("git remote get-url origin", "could not auto-detect git url")
         # use https instead git when auto-detected
+        # GitLab: git@github.com:containers/podman.git
+        # GitHub: git@gitlab.com:testing-farm/cli.git
+        # Pagure: ssh://git@pagure.io/fedora-ci/messages.git
         assert git_url
-        git_url = git_url.replace('git@gitlab.com:', 'https://gitlab.com/')
+        git_url = re.sub(r"^(?:ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
 
     if not git_ref:
         if not git_available:

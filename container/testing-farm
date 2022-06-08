@@ -22,4 +22,4 @@ if [ "$1" == "update" ]; then
 fi
 
 # run the tool
-podman run -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $IMAGE testing-farm $@
+podman run -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $IMAGE testing-farm "$@"

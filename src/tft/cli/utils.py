@@ -3,7 +3,7 @@
 
 import subprocess
 import uuid
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
@@ -29,6 +29,35 @@ def cmd_output_or_exit(command: str, error: str) -> Optional[str]:
 def blue(message: str) -> str:
     """Colorize text to bright blue color"""
     return typer.style(f"{message}", fg=typer.colors.BRIGHT_BLUE)
+
+
+def hw_constraints(hardware: List[str]) -> Dict[str, Any]:
+    """Convert hardware parameters to a dictionary"""
+
+    constraints = {}  # type: Dict[str, Any]
+
+    for raw_constraint in hardware:
+        path, value = raw_constraint.split('=', 1)
+
+        if not path or not value:
+            exit_error(f"cannot parse hardware constraint `{raw_constraint}`")
+
+        # Walk the path, step by step, and initialize containers along the way. The last step is not
+        # a name of another nested container, but actually a name in the last container.
+        container = constraints
+        path_splitted = path.split('.')
+
+        while len(path_splitted) > 1:
+            step = path_splitted.pop(0)
+
+            if step not in container:
+                container[step] = {}
+
+            container = container[step]
+
+        container[path_splitted.pop()] = value
+
+    return constraints
 
 
 def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:

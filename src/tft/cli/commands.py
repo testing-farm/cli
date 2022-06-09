@@ -18,6 +18,7 @@ from tft.cli.utils import (
     blue,
     cmd_output_or_exit,
     exit_error,
+    hw_constraints,
     options_to_dict,
     uuid_valid,
 )
@@ -127,6 +128,16 @@ def request(
         None,
         help="Compose used to provision system-under-test. If not set tests will expect 'container' provision method specified in tmt plans.",  # noqa
     ),
+    hardware: List[str] = typer.Option(
+        None,
+        help=(
+            "HW requirements, expresses as key/value pairs. Keys can consist of several properties, "
+            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
+            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
+            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/plans.html#hardware "
+            "for the hardware specification."
+        ),
+    ),
     pool: Optional[str] = typer.Option(
         None,
         help="Force pool to provision. By default the most suited pool is used according to the hardware requirements specified in tmt plans.",  # noqa
@@ -235,6 +246,9 @@ def request(
 
     if variables:
         environments[0]["variables"] = options_to_dict("environment variables", variables)
+
+    if hardware:
+        environments[0]["hardware"] = hw_constraints(hardware)
 
     # create final request
     request = TestingFarmRequestV1

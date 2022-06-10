@@ -3,7 +3,7 @@
 
 import subprocess
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import typer
 
@@ -14,16 +14,15 @@ def exit_error(error: str):
     raise typer.Exit(code=255)
 
 
-def cmd_output_or_exit(command: str, error: str) -> Optional[str]:
+def cmd_output_or_exit(command: str, error: str) -> str:
     """Return local command output or exit with given error message"""
     try:
         output = subprocess.check_output(command.split(), stderr=subprocess.STDOUT)
-        return output.rstrip().decode("utf-8")
 
     except subprocess.CalledProcessError:
         exit_error(error)
 
-    return None
+    return output.rstrip().decode("utf-8")
 
 
 def blue(message: str) -> str:

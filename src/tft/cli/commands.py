@@ -111,15 +111,15 @@ def version():
 
 def request(
     api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
-    test_type: Optional[str] = typer.Option(None, help="Test type to use, if not set autodetected."),
+    test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
     tmt_plan_regex: Optional[str] = typer.Option(
         None, "--plan", help="Regex for selecting plans, by default all plans are selected."
     ),
     git_url: Optional[str] = typer.Option(
         None, help="URL of the GIT repository to test. If not set autodetected from current git repository."
     ),
-    git_ref: Optional[str] = typer.Option(
-        None, help="GIT ref or branch to test. If not set autodetected from current git repository."
+    git_ref: str = typer.Option(
+        "main", help="GIT ref or branch to test. If not set autodetected from current git repository."
     ),
     arch: str = typer.Option(
         "x86_64", help="URL of the GIT repository to test. If not set autodetected from current git repository."
@@ -170,19 +170,24 @@ def request(
     if not settings.API_TOKEN:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
 
-    # check for uncommited changes
-    if git_available and not git_url:
-        try:
-            subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
-            subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as process:
-            if 'fatal:' not in str(process.stdout):
-                exit_error("uncommited changes found in current git repository, cannot continue")
-
-    # resolve git repository details
+    # resolve git repository details from the current repository
     if not git_url:
         if not git_available:
             exit_error("no git url defined")
+
+        # check for uncommited changes
+        if git_available and not git_url:
+            try:
+                subprocess.check_output("git update-index --refresh".split(), stderr=subprocess.STDOUT)
+                subprocess.check_output("git diff-index --quiet HEAD --".split(), stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as process:
+                if 'fatal:' not in str(process.stdout):
+                    exit_error(
+                        "Uncommited changes found in current git repository, refusing to continue.\n"
+                        "   HINT: When running tests for the current repository, the changes "
+                        "must be commited and pushed."
+                    )
+
         git_url = cmd_output_or_exit("git remote get-url origin", "could not auto-detect git url")
         # use https instead git when auto-detected
         # GitLab: git@github.com:containers/podman.git
@@ -191,17 +196,14 @@ def request(
         assert git_url
         git_url = re.sub(r"^(?:ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
 
-    if not git_ref:
-        if not git_available:
-            exit_error("no git ref defined")
+        # detect git ref
         git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")
 
         # in case we have a commit checked out, not a named branch
         if git_ref == "HEAD":
             git_ref = cmd_output_or_exit("git rev-parse HEAD", "could not autodetect git ref")
 
-    # detect test type from local files
-    if not test_type:
+        # detect test type from local files
         if os.path.exists(".fmf/version"):
             test_type = "fmf"
         elif os.path.exists("tests/tests.yml"):
@@ -211,13 +213,12 @@ def request(
 
     # make typing happy
     assert git_url is not None
-    assert git_ref is not None
 
     # STI is not supported against a container
     if test_type == "sti" and compose == "container":
         exit_error("container based testing is not available for 'sti' test type")
 
-    typer.echo(f"📦 repository {blue(git_url)} ref {blue(git_ref)}")
+    typer.echo(f"📦 repository {blue(git_url)} ref {blue(git_ref)} test-type {blue(test_type)}")
 
     pool_info = f"via pool {blue(pool)}" if pool else ""
     typer.echo(f"💻 {blue(compose or 'container image in plan')} on {blue(arch)} {pool_info}")

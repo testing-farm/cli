@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+testinfo() { printf "\n== TEST: $@ ==================\n"; }
+
 # we do not want pipefail for these tests
 set +o pipefail
 
@@ -8,6 +10,7 @@ TMPDIR=$(mktemp -d)
 pushd $TMPDIR
 
 # no token
+testinfo "no token specified"
 testing-farm request | tee output
 egrep "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable$" output
 
@@ -15,6 +18,7 @@ egrep "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment va
 export TESTING_FARM_API_TOKEN=invalid
 
 # auto-detection error
+testinfo "auto-detection error"
 testing-farm request | tee output
 egrep "^⛔ could not auto-detect git url$" output
 
@@ -23,22 +27,26 @@ git clone https://gitlab.com/testing-farm/cli
 pushd cli
 
 # test auto-detection
+testinfo "auto-detection test"
 testing-farm request | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 egrep "💻 container image in plan on x86_64" output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
 # test GitHub https mapping
+testinfo "test GitHub mapping"
 git remote set-url origin git@github.com:testing-farm/cli
 testing-farm request | tee output
 egrep "📦 repository https://github.com/testing-farm/cli ref main" output
 
 # test GitLab https mapping
+testinfo "test GitLab mapping"
 git remote set-url origin git@gitlab.com:testing-farm/cli
 testing-farm request | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 
 # test Pagure https mapping
+testinfo "test Pagure mapping"
 git remote set-url origin ssh://git@pagure.io/testing-farm/cli
 testing-farm request | tee output
 egrep "📦 repository https://pagure.io/testing-farm/cli ref main" output
@@ -47,31 +55,38 @@ egrep "📦 repository https://pagure.io/testing-farm/cli ref main" output
 git remote set-url origin https://gitlab.com/testing-farm/cli
 
 # test exit code on invalid token
+testinfo "test exit code on invalid token"
 set +e
 testing-farm request
 test $? == 255
 set -e
 
 # checkout a ref rather, test autodetection working
+testinfo "test commit SHA detection"
 COMMIT_SHA=$(git rev-parse HEAD)
 git checkout $COMMIT_SHA
 testing-farm request | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref $COMMIT_SHA" output
 
 # test compose, pool, arch
+testinfo "test compose, pool, arch can be specified"
 testing-farm request --compose SuperOS --arch aarch64 --pool super-pool | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref $COMMIT_SHA" output
 egrep "💻 SuperOS on aarch64 via pool super-pool" output
 
 # invalid variables
+testinfo "test invalid variables"
 testing-farm request --environment invalid | tee output
 egrep "⛔ Options for environment variables are invalid, must be defined as \`key=value\`" output
 
 # invalid secrets
+testinfo "test invalid secrets"
+testing-farm request --environment invalid | tee output
 testing-farm request --secret invalid | tee output
 egrep "⛔ Options for environment secrets are invalid, must be defined as \`key=value\`" output
 
 # invalid tmt context
+testinfo "test invalid tmt context"
 testing-farm request --context invalid | tee output
 egrep "⛔ Options for tmt context are invalid, must be defined as \`key=value\`" output
 

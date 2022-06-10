@@ -272,10 +272,10 @@ def request(
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
-        exit_error("Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
 
     if response.status_code != 200:
-        exit_error("Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
     watch(api_url, response.json()['id'], no_wait)

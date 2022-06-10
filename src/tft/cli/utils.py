@@ -31,10 +31,10 @@ def blue(message: str) -> str:
     return typer.style(f"{message}", fg=typer.colors.BRIGHT_BLUE)
 
 
-def hw_constraints(hardware: List[str]) -> Dict[str, Any]:
+def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
     """Convert hardware parameters to a dictionary"""
 
-    constraints = {}  # type: Dict[str, Any]
+    constraints: Dict[Any, Any] = {}
 
     for raw_constraint in hardware:
         path, value = raw_constraint.split('=', 1)
@@ -44,7 +44,7 @@ def hw_constraints(hardware: List[str]) -> Dict[str, Any]:
 
         # Walk the path, step by step, and initialize containers along the way. The last step is not
         # a name of another nested container, but actually a name in the last container.
-        container = constraints
+        container: Any = constraints
         path_splitted = path.split('.')
 
         while len(path_splitted) > 1:
@@ -57,7 +57,8 @@ def hw_constraints(hardware: List[str]) -> Dict[str, Any]:
 
         container[path_splitted.pop()] = value
 
-    return constraints
+    # automatically convert disk and network values to a list, as the standard requires
+    return {key: value if key not in ("disk", "network") else [value] for key, value in constraints.items()}
 
 
 def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:

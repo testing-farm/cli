@@ -25,6 +25,11 @@ def cmd_output_or_exit(command: str, error: str) -> str:
     return output.rstrip().decode("utf-8")
 
 
+def artifacts(type: str, ids: List[str]) -> List[Dict[str, str]]:
+    """Return artifacts List for given artifact type"""
+    return [{"type": type, "id": id} for id in ids]
+
+
 def blue(message: str) -> str:
     """Colorize text to bright blue color"""
     return typer.style(f"{message}", fg=typer.colors.BRIGHT_BLUE)

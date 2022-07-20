@@ -15,6 +15,7 @@ import typer
 
 from tft.cli.config import settings
 from tft.cli.utils import (
+    artifacts,
     blue,
     cmd_output_or_exit,
     exit_error,
@@ -26,7 +27,7 @@ from tft.cli.utils import (
 cli_version: str = pkg_resources.get_distribution("tft-cli").version
 
 TestingFarmRequestV1: Dict[str, Any] = {'api_key': None, 'test': {}, 'environments': None}
-Environments: List[Dict[str, Any]] = [{'arch': None, 'os': None, 'pool': None}]
+Environments: List[Dict[str, Any]] = [{'arch': None, 'os': None, 'pool': None, 'artifacts': None}]
 TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
@@ -155,6 +156,15 @@ def request(
     worker_image: Optional[str] = typer.Option(
         None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
     ),
+    redhat_brew_build: List[str] = typer.Option(None, help="Brew build task IDs to install on the test environment."),
+    fedora_koji_build: List[str] = typer.Option(None, help="Koji build task IDs to install on the test environment."),
+    fedora_copr_build: List[str] = typer.Option(
+        None,
+        help="Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`, e.g. 1784470:fedora-32-x86_64.",  # noqa
+    ),
+    repository: List[str] = typer.Option(
+        None, help="Repository base url to add to the test environment and install all packages from it."
+    ),
 ):
     """
     Request testing from Testing Farm.
@@ -235,6 +245,7 @@ def request(
     environments = Environments
     environments[0]["arch"] = arch
     environments[0]["pool"] = pool
+    environments[0]["artifacts"] = []
 
     if compose:
         environments[0]["os"] = {"compose": compose}
@@ -250,6 +261,18 @@ def request(
 
     if hardware:
         environments[0]["hardware"] = hw_constraints(hardware)
+
+    if redhat_brew_build:
+        environments[0]["artifacts"].extend(artifacts("redhat-brew-build", redhat_brew_build))
+
+    if fedora_koji_build:
+        environments[0]["artifacts"].extend(artifacts("fedora-koji-build", fedora_koji_build))
+
+    if fedora_copr_build:
+        environments[0]["artifacts"].extend(artifacts("fedora-copr-build", fedora_copr_build))
+
+    if repository:
+        environments[0]["artifacts"].extend(artifacts("repository", repository))
 
     # create final request
     request = TestingFarmRequestV1

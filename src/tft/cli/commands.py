@@ -132,9 +132,7 @@ def request(
     git_ref: str = typer.Option(
         "main", help="GIT ref or branch to test. If not set autodetected from current git repository."
     ),
-    arch: str = typer.Option(
-        "x86_64", help="URL of the GIT repository to test. If not set autodetected from current git repository."
-    ),
+    arch: str = typer.Option("x86_64", help="Hardware platfrom of the system to be provisioned."),
     compose: Optional[str] = typer.Option(
         None,
         help="Compose used to provision system-under-test. If not set tests will expect 'container' provision method specified in tmt plans.",  # noqa

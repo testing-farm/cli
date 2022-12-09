@@ -12,4 +12,8 @@ settings = LazySettings(
     ISSUE_TRACKER="https://gitlab.com/testing-farm/general/-/issues/new",
     ONBOARDING_DOCS="https://docs.testing-farm.io/general/0.1/onboarding.html",
     WATCH_TICK=3,
+    DEFAULT_API_TIMEOUT=10,
+    DEFAULT_API_RETRIES=7,
+    # should lead to delays of 0.5, 1, 2, 4, 8, 16, 32 seconds
+    DEFAULT_RETRY_BACKOFF_FACTOR=1,
 )

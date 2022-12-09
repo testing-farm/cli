@@ -5,7 +5,12 @@ import subprocess
 import uuid
 from typing import Any, Dict, List
 
+import requests
+import requests.adapters
 import typer
+from urllib3 import Retry
+
+from tft.cli.config import settings
 
 
 def exit_error(error: str):
@@ -85,3 +90,40 @@ def uuid_valid(value: str, version: int = 4) -> bool:
         return True
     except ValueError:
         return False
+
+
+class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.timeout = kwargs.pop('timeout', settings.DEFAULT_API_TIMEOUT)
+
+        super().__init__(*args, **kwargs)
+
+    def send(self, request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:  # type: ignore[override]
+        kwargs.setdefault('timeout', self.timeout)
+
+        return super().send(request, **kwargs)
+
+
+def install_http_retries(
+    session: requests.Session,
+    timeout: int = settings.DEFAULT_API_TIMEOUT,
+    retries: int = settings.DEFAULT_API_RETRIES,
+    retry_backoff_factor: int = settings.DEFAULT_RETRY_BACKOFF_FACTOR,
+) -> None:
+    retry_strategy = Retry(
+        total=retries,
+        status_forcelist=[
+            429,  # Too Many Requests
+            500,  # Internal Server Error
+            502,  # Bad Gateway
+            503,  # Service Unavailable
+            504,  # Gateway Timeout
+        ],
+        method_whitelist=['HEAD', 'GET', 'POST', 'DELETE', 'PUT'],
+        backoff_factor=retry_backoff_factor,
+    )
+
+    timeout_adapter = TimeoutHTTPAdapter(timeout=timeout, max_retries=retry_strategy)
+
+    session.mount('https://', timeout_adapter)
+    session.mount('http://', timeout_adapter)

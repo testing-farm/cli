@@ -20,6 +20,7 @@ from tft.cli.utils import (
     cmd_output_or_exit,
     exit_error,
     hw_constraints,
+    install_http_retries,
     options_to_dict,
     uuid_valid,
 )
@@ -52,8 +53,17 @@ def watch(
 
     artifacts_shown = False
 
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
     while True:
-        response = requests.get(get_url)
+        try:
+            response = session.get(get_url)
+
+        except requests.exceptions.ConnectionError as exc:
+            typer.secho("📛 connection to API failed", fg=typer.colors.RED)
+            raise typer.Exit(code=2) from exc
 
         if response.status_code == 404:
             exit_error("request with given ID not found")
@@ -290,8 +300,12 @@ def request(
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
     # handle errors
-    response = requests.post(post_url, json=request)
+    response = session.post(post_url, json=request)
     if response.status_code == 404:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 

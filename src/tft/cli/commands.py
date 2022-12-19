@@ -137,6 +137,10 @@ def request(
         metavar='',
         rich_help_panel='Environment variables',
     ),
+    timeout: Optional[int] = typer.Option(
+        60 * 12,
+        help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated. Testing Farm internal default is 12h.",  # noqa
+    ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
     tmt_plan_regex: Optional[str] = typer.Option(
         None,
@@ -341,12 +345,14 @@ def request(
         request["test"]["fmf"] = test
     else:
         request["test"]["sti"] = test
+
     request["environments"] = environments
+    request["settings"] = {}
+    request["settings"]["pipeline"] = {"timeout": timeout}
 
     # worker image
     if worker_image:
-        request["settings"] = {"worker": {"image": worker_image}}
-
+        request["settings"]["worker"] = {"image": worker_image}
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 

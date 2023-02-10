@@ -43,7 +43,7 @@ egrep "^Test environment installation failed: reason unknown, please escalate$" 
 
 # api url
 testinfo "custom API url"
-testing-farm watch --api-url https://api.stage.testing-farm.io --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
+timeout 1 testing-farm watch --api-url https://api.stage.testing-farm.io --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
 egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
 
 # remove temporary directory

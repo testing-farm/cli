@@ -90,5 +90,11 @@ testinfo "test invalid tmt context"
 testing-farm request --context invalid | tee output
 egrep "⛔ Options for tmt context are invalid, must be defined as \`key=value\`" output
 
+# dry run
+testinfo "test dry run"
+testing-farm request --dry-run --compose Fedora | tee output
+egrep "🔍 Dry run, showing POST json only" output
+tail -n+4 output | jq -r .environments[].os.compose | grep Fedora
+
 # remove temporary directory
 rm -rf $TMPDIR

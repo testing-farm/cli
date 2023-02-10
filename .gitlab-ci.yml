@@ -56,7 +56,9 @@ tmt:
   needs: ["container"]
   image: quay.io/testing-farm/cli:latest
   script:
-    - testing-farm request -e IMAGE_TAG=$CI_PIPELINE_ID --git-url https://gitlab.com/testing-farm/cli.git --git-ref $CI_MERGE_REQUEST_REF_PATH
+    - testing-farm request -c distro=alpine -e IMAGE_TAG=$CI_PIPELINE_ID
+                           --git-url $CI_MERGE_REQUEST_PROJECT_URL
+                           --git-ref $CI_MERGE_REQUEST_REF_PATH
 
 #
 # 🚀 deploy

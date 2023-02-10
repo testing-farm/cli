@@ -18,7 +18,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks.git
-    rev: v4.1.0
+    rev: v4.4.0
     hooks:
       - id: check-added-large-files
       - id: check-merge-conflict
@@ -33,7 +33,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.1.11
+    rev: v1.4.2
     hooks:
       - id: insert-license
         files: \.py$
@@ -42,7 +42,7 @@ repos:
           - LICENSE_SPDX
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
         args:
@@ -50,7 +50,7 @@ repos:
           - "--filter-files"
 
   - repo: https://github.com/psf/black.git
-    rev: 22.1.0
+    rev: 23.1.0
     hooks:
       - id: black
         language_version: python3
@@ -60,7 +60,7 @@ repos:
           - "--config=pyproject.toml"
 
   - repo: https://github.com/pycqa/flake8.git
-    rev: 4.0.1
+    rev: 6.0.0
     hooks:
       - id: flake8
         args:
@@ -71,7 +71,7 @@ repos:
           )$
 
   - repo: https://github.com/returntocorp/semgrep
-    rev: 'v0.96.0'
+    rev: 'v1.9.0'
     hooks:
       - id: semgrep
         args: ['--config', 'p/r2c-ci', '--error']

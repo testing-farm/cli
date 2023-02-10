@@ -9,8 +9,10 @@ all: build test clean
 IMAGE_TAG ?= ${USER}
 
 # in toolbox environment run tmt against localhost
+TMT_CONTEXT = -c distro=alpine
 ifeq ($(findstring fedora-toolbox,$(image)),fedora-toolbox)
 TMT_RUN_ARGS = -a provision -h local
+TMT_CONTEXT = -c distro=fedora
 endif
 
 build:
@@ -28,7 +30,7 @@ pre-commit:
 
 tmt:
 	tmt clean runs -i tft-cli
-	-tmt -c distro=alpine run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
+	-tmt $(TMT_CONTEXT) run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
 	tmt run -i tft-cli report -vvv
 
 tox:

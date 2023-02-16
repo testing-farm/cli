@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import os
 import re
 import shutil
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import pkg_resources
 import requests
 import typer
+from rich import print
 
 from tft.cli.config import settings
 from tft.cli.utils import (
@@ -173,6 +175,7 @@ def request(
     repository: List[str] = typer.Option(
         None, help="Repository base url to add to the test environment and install all packages from it."
     ),
+    dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
     """
     Request testing from Testing Farm.
@@ -301,6 +304,12 @@ def request(
     # Setting up retries
     session = requests.Session()
     install_http_retries(session)
+
+    # dry run
+    if dry_run:
+        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        raise typer.Exit()
 
     # handle errors
     response = session.post(post_url, json=request)

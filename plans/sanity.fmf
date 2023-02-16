@@ -11,5 +11,11 @@ provision:
   how: container
   image: quay.io/testing-farm/cli:${IMAGE_TAG}
 
+adjust:
+  prepare:
+    how: shell
+    script: apk add jq
+  when: distro = alpine
+
 execute:
   how: tmt

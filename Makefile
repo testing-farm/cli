@@ -28,7 +28,7 @@ pre-commit:
 
 tmt:
 	tmt clean runs -i tft-cli
-	-tmt run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
+	-tmt -c distro=alpine run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
 	tmt run -i tft-cli report -vvv
 
 tox:

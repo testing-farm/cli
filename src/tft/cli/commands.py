@@ -128,6 +128,9 @@ def request(
     tmt_plan_regex: Optional[str] = typer.Option(
         None, "--plan", help="Regex for selecting plans, by default all plans are selected."
     ),
+    sti_playbooks: Optional[List[str]] = typer.Option(
+        None, "--playbook", help="Playbook to run, by default 'tests/tests*.yml', multiple playbooks can be specified."
+    ),
     git_url: Optional[str] = typer.Option(
         None, help="URL of the GIT repository to test. If not set autodetected from current git repository."
     ),
@@ -251,6 +254,9 @@ def request(
 
     if tmt_plan_regex:
         test["name"] = tmt_plan_regex
+
+    if sti_playbooks:
+        test["playbooks"] = sti_playbooks
 
     # environment details
     environments = Environments

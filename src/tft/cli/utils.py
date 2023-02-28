@@ -3,7 +3,7 @@
 
 import subprocess
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import requests
 import requests.adapters
@@ -64,7 +64,15 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
 
             container = container[step]
 
-        container[path_splitted.pop()] = value
+        value_mixed: Union[bool, str] = value
+
+        if value.lower() in ['true']:
+            value_mixed = True
+
+        elif value.lower() in ['false']:
+            value_mixed = False
+
+        container[path_splitted.pop()] = value_mixed
 
     # automatically convert disk and network values to a list, as the standard requires
     return {key: value if key not in ("disk", "network") else [value] for key, value in constraints.items()}

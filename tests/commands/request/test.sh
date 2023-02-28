@@ -96,5 +96,11 @@ testing-farm request --dry-run --compose Fedora | tee output
 egrep "🔍 Dry run, showing POST json only" output
 tail -n+4 output | jq -r .environments[].os.compose | grep Fedora
 
+# hardware
+testinfo "test dry run"
+testing-farm request --dry-run --compose Fedora --hardware memory=">=4GB" --hardware virtualization.is-virtualized=false | tee output
+tail -n+4 output | jq -r .environments[].hardware.memory | egrep '^>=4GB$'
+tail -n+4 output | jq -r '.environments[].hardware.virtualization."is-virtualized"' | egrep '^false$'
+
 # remove temporary directory
 rm -rf $TMPDIR

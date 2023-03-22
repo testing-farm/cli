@@ -102,5 +102,16 @@ testing-farm request --dry-run --compose Fedora --hardware memory=">=4GB" --hard
 tail -n+4 output | jq -r .environments[].hardware.memory | egrep '^>=4GB$'
 tail -n+4 output | jq -r '.environments[].hardware.virtualization."is-virtualized"' | egrep '^false$'
 
+# test multiple arches
+testinfo "test multiple arches"
+testing-farm request --dry-run --compose Fedora --arch x86_64,aarch64,ppc64le | tee output
+tail -n+6 output | jq -r .environments[0].arch | egrep '^x86_64$'
+tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
+tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
+testing-farm request --dry-run --compose Fedora --arch x86_64 --arch aarch64 --arch ppc64le | tee output
+tail -n+6 output | jq -r .environments[0].arch | egrep '^x86_64$'
+tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
+tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
+
 # remove temporary directory
 rm -rf $TMPDIR

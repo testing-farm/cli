@@ -135,3 +135,7 @@ def install_http_retries(
 
     session.mount('https://', timeout_adapter)
     session.mount('http://', timeout_adapter)
+
+
+def normalize_multistring_option(options: List[str], separator: str = ',') -> List[str]:
+    return sum([[option.strip() for option in item.split(separator)] for item in options], [])

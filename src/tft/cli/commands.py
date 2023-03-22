@@ -23,6 +23,7 @@ from tft.cli.utils import (
     exit_error,
     hw_constraints,
     install_http_retries,
+    normalize_multistring_option,
     options_to_dict,
     uuid_valid,
 )
@@ -30,7 +31,7 @@ from tft.cli.utils import (
 cli_version: str = pkg_resources.get_distribution("tft-cli").version
 
 TestingFarmRequestV1: Dict[str, Any] = {'api_key': None, 'test': {}, 'environments': None}
-Environments: List[Dict[str, Any]] = [{'arch': None, 'os': None, 'pool': None, 'artifacts': None}]
+Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifacts': None}
 TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
@@ -137,7 +138,7 @@ def request(
     git_ref: str = typer.Option(
         "main", help="GIT ref or branch to test. If not set autodetected from current git repository."
     ),
-    arch: str = typer.Option("x86_64", help="Hardware platfrom of the system to be provisioned."),
+    arches: List[str] = typer.Option(["x86_64"], "--arch", help="Hardware platforms of the system to be provisioned."),
     compose: Optional[str] = typer.Option(
         None,
         help="Compose used to provision system-under-test. If not set tests will expect 'container' provision method specified in tmt plans.",  # noqa
@@ -188,6 +189,9 @@ def request(
         TESTING_FARM_API_URL            - Testing Farm API URL
         TESTING_FARM_API_TOKEN          - API token used to authenticate.
     """
+    # Split comma separated arches
+    arches = normalize_multistring_option(arches)
+
     git_available = bool(shutil.which("git"))
 
     # check for token
@@ -245,7 +249,8 @@ def request(
     typer.echo(f"📦 repository {blue(git_url)} ref {blue(git_ref)} test-type {blue(test_type)}")
 
     pool_info = f"via pool {blue(pool)}" if pool else ""
-    typer.echo(f"💻 {blue(compose or 'container image in plan')} on {blue(arch)} {pool_info}")
+    for arch in arches:
+        typer.echo(f"💻 {blue(compose or 'container image in plan')} on {blue(arch)} {pool_info}")
 
     # test details
     test = TestTMT if test_type == "fmf" else TestSTI
@@ -259,37 +264,41 @@ def request(
         test["playbooks"] = sti_playbooks
 
     # environment details
-    environments = Environments
-    environments[0]["arch"] = arch
-    environments[0]["pool"] = pool
-    environments[0]["artifacts"] = []
+    environments = []
+    for arch in arches:
+        environment = Environment.copy()
+        environment["arch"] = arch
+        environment["pool"] = pool
+        environment["artifacts"] = []
 
-    if compose:
-        environments[0]["os"] = {"compose": compose}
+        if compose:
+            environment["os"] = {"compose": compose}
 
-    if secrets:
-        environments[0]["secrets"] = options_to_dict("environment secrets", secrets)
+        if secrets:
+            environment["secrets"] = options_to_dict("environment secrets", secrets)
 
-    if tmt_context:
-        environments[0]["tmt"] = {"context": options_to_dict("tmt context", tmt_context)}
+        if tmt_context:
+            environment["tmt"] = {"context": options_to_dict("tmt context", tmt_context)}
 
-    if variables:
-        environments[0]["variables"] = options_to_dict("environment variables", variables)
+        if variables:
+            environment["variables"] = options_to_dict("environment variables", variables)
 
-    if hardware:
-        environments[0]["hardware"] = hw_constraints(hardware)
+        if hardware:
+            environment["hardware"] = hw_constraints(hardware)
 
-    if redhat_brew_build:
-        environments[0]["artifacts"].extend(artifacts("redhat-brew-build", redhat_brew_build))
+        if redhat_brew_build:
+            environment["artifacts"].extend(artifacts("redhat-brew-build", redhat_brew_build))
 
-    if fedora_koji_build:
-        environments[0]["artifacts"].extend(artifacts("fedora-koji-build", fedora_koji_build))
+        if fedora_koji_build:
+            environment["artifacts"].extend(artifacts("fedora-koji-build", fedora_koji_build))
 
-    if fedora_copr_build:
-        environments[0]["artifacts"].extend(artifacts("fedora-copr-build", fedora_copr_build))
+        if fedora_copr_build:
+            environment["artifacts"].extend(artifacts("fedora-copr-build", fedora_copr_build))
 
-    if repository:
-        environments[0]["artifacts"].extend(artifacts("repository", repository))
+        if repository:
+            environment["artifacts"].extend(artifacts("repository", repository))
+
+        environments.append(environment)
 
     # create final request
     request = TestingFarmRequestV1

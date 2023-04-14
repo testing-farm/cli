@@ -113,5 +113,11 @@ tail -n+6 output | jq -r .environments[0].arch | egrep '^x86_64$'
 tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
 tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
 
+# test tags
+testinfo "test tags"
+testing-farm request --dry-run --compose Fedora --tag FirstTag=FirstValue --tag SecondTag=SecondValue  | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.tags.FirstTag | egrep '^FirstValue$'
+tail -n+4 output | jq -r .environments[].settings.provisioning.tags.SecondTag | egrep '^SecondValue$'
+
 # remove temporary directory
 rm -rf $TMPDIR

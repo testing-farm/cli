@@ -351,3 +351,94 @@ def request(
 
     # watch
     watch(api_url, response.json()['id'], no_wait)
+
+
+def restart(
+    request_id: str = typer.Argument(..., help="Testing Farm request ID or an string containing it."),
+    no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
+    dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
+):
+    """
+    Restart a Testing Farm request.
+
+    Just pass a request ID or an URL with a request ID to restart it.
+
+    Environment variables:
+
+        TESTING_FARM_API_URL            - Testing Farm API URL
+        TESTING_FARM_INTERNAL_API_URL   - Internal Testing Farm API URL
+        TESTING_FARM_API_TOKEN          - API token used to authenticate.
+    """
+
+    # UUID pattern
+    uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
+
+    # Find the UUID in the string
+    uuid_match = uuid_pattern.search(request_id)
+
+    if not uuid_match:
+        exit_error(f"Could not find a valid Testing Farm request id in '{request_id}'.")
+        return
+
+    # Extract the UUID from the match object
+    _request_id = uuid_match.group()
+
+    # Construct URL to the internal API
+    get_url = urllib.parse.urljoin(
+        str(settings.INTERNAL_API_URL), f"v0.1/requests/{_request_id}?api_key={settings.API_TOKEN}"
+    )
+
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    # Get the request details
+    response = session.get(get_url)
+
+    if response.status_code == 404:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code != 200:
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    request = response.json()
+
+    # Transform to a request
+    request['environments'] = request['environments_requested']
+
+    # Remove all keys except test and environments
+    for key in list(request):
+        if key not in ['test', 'environments']:
+            del request[key]
+
+    # Remove empty test keys
+    for key in list(request['test']):
+        if not request['test'][key]:
+            del request['test'][key]
+
+    # Add API key
+    request['api_key'] = settings.API_TOKEN
+
+    # dry run
+    if dry_run:
+        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        raise typer.Exit()
+
+    # submit request to Testing Farm
+    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
+
+    # handle errors
+    response = session.post(post_url, json=request)
+    if response.status_code == 404:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 400:
+        print(response.text)
+        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+
+    if response.status_code != 200:
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    # watch
+    watch(str(settings.API_URL), response.json()['id'], no_wait)

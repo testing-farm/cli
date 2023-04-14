@@ -1,0 +1,2 @@
+summary: Test restart command
+test: ./test.sh

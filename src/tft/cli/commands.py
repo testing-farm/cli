@@ -179,6 +179,9 @@ def request(
     repository: List[str] = typer.Option(
         None, help="Repository base url to add to the test environment and install all packages from it."
     ),
+    tags: Optional[List[str]] = typer.Option(
+        None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
+    ),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
     """
@@ -299,6 +302,9 @@ def request(
             environment["artifacts"].extend(artifacts("repository", repository))
 
         environments.append(environment)
+
+    if tags:
+        environments[0]["settings"] = {"provisioning": {"tags": options_to_dict("tags", tags)}}
 
     # create final request
     request = TestingFarmRequestV1

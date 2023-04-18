@@ -1,0 +1,35 @@
+#!/bin/bash -ex
+
+testinfo() { printf "\n== TEST: $@ ==================\n"; }
+
+# we do not want pipefail for these tests
+set +o pipefail
+
+# we need to work in a clean directory, the CWD is a git repo and can mess around with us!
+TMPDIR=$(mktemp -d)
+pushd $TMPDIR
+
+# no request specified
+testinfo "no request id"
+testing-farm restart |& tee output
+egrep "^Error: Missing argument 'REQUEST_ID'.$" output
+
+# invalid request id
+testinfo "invalid request request id"
+testing-farm restart ABC | tee output
+egrep "^⛔ Could not find a valid Testing Farm request id in 'ABC'.$" output
+
+# invalid request id, bad uuid
+testinfo "invalid request request id"
+testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e8452 | tee output
+egrep "^⛔ Could not find a valid Testing Farm request id in '40cafaa3-0efa-4abf-a20b-a6ad87e8452'.$" output
+
+# valid request id, no token
+testinfo "valid request request id"
+testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# valid request id, no token
+testinfo "valid request request id"
+testing-farm restart https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

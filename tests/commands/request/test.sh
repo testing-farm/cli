@@ -97,7 +97,7 @@ egrep "🔍 Dry run, showing POST json only" output
 tail -n+4 output | jq -r .environments[].os.compose | grep Fedora
 
 # hardware
-testinfo "test dry run"
+testinfo "test hardware"
 testing-farm request --dry-run --compose Fedora --hardware memory=">=4GB" --hardware virtualization.is-virtualized=false | tee output
 tail -n+4 output | jq -r .environments[].hardware.memory | egrep '^>=4GB$'
 tail -n+4 output | jq -r '.environments[].hardware.virtualization."is-virtualized"' | egrep '^false$'
@@ -118,6 +118,11 @@ testinfo "test tags"
 testing-farm request --dry-run --compose Fedora --tag FirstTag=FirstValue --tag SecondTag=SecondValue  | tee output
 tail -n+4 output | jq -r .environments[].settings.provisioning.tags.FirstTag | egrep '^FirstValue$'
 tail -n+4 output | jq -r .environments[].settings.provisioning.tags.SecondTag | egrep '^SecondValue$'
+
+# plan-filter
+testinfo "test plan-filter"
+testing-farm request --plan-filter "tag: plan-filter" --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .test.fmf.plan_filter | egrep '^tag: plan-filter$'
 
 # remove temporary directory
 rm -rf $TMPDIR

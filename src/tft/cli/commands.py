@@ -355,6 +355,10 @@ def request(
 
 def restart(
     request_id: str = typer.Argument(..., help="Testing Farm request ID or an string containing it."),
+    compose: Optional[str] = typer.Option(
+        None,
+        help="Change compose used to provision system-under-test. If not set it will use the compose from the original request.",  # noqa
+    ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
@@ -415,6 +419,14 @@ def restart(
     for key in list(request['test']):
         if not request['test'][key]:
             del request['test'][key]
+
+    # Set compose
+    if compose:
+        typer.echo(f"💻 forcing {blue(compose)}")
+        for environment in request['environments']:
+            if environment.get("os") is None:
+                environment["os"] = {}
+            environment["os"]["compose"] = compose
 
     # Add API key
     request['api_key'] = settings.API_TOKEN

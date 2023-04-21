@@ -124,5 +124,10 @@ testinfo "test plan-filter"
 testing-farm request --plan-filter "tag: plan-filter" --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .test.fmf.plan_filter | egrep '^tag: plan-filter$'
 
+# test-filter
+testinfo "test test-filter"
+testing-farm request --test-filter "tag: test-filter" --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .test.fmf.test_filter | egrep '^tag: test-filter$'
+
 # remove temporary directory
 rm -rf $TMPDIR

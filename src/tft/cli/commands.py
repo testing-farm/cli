@@ -132,6 +132,7 @@ def request(
     tmt_plan_filter_regex: Optional[str] = typer.Option(
         None, "--plan-filter", help="Regex for filtering plans, by default only enabled plans are executed."
     ),
+    tmt_test_filter_regex: Optional[str] = typer.Option(None, "--test-filter", help="Regex for filtering tests."),
     sti_playbooks: Optional[List[str]] = typer.Option(
         None, "--playbook", help="Playbook to run, by default 'tests/tests*.yml', multiple playbooks can be specified."
     ),
@@ -268,6 +269,9 @@ def request(
 
     if tmt_plan_filter_regex:
         test["plan_filter"] = tmt_plan_filter_regex
+
+    if tmt_test_filter_regex:
+        test["test_filter"] = tmt_test_filter_regex
 
     if sti_playbooks:
         test["playbooks"] = sti_playbooks

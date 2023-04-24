@@ -12,7 +12,7 @@ pushd $TMPDIR
 # no request specified
 testinfo "no request id"
 testing-farm restart |& tee output
-egrep "^Error: Missing argument 'REQUEST_ID'.$" output
+egrep "Missing argument 'REQUEST_ID'." output
 
 # invalid request id
 testinfo "invalid request request id"

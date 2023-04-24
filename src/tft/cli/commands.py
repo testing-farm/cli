@@ -35,6 +35,9 @@ Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifact
 TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
+REQUEST_PANEL_TMT = "TMT Options"
+REQUEST_PANEL_STI = "STI Options"
+
 
 def watch(
     api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
@@ -124,17 +127,37 @@ def version():
 
 
 def request(
-    api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
+    api_url: str = typer.Argument(
+        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
+    ),
+    api_token: str = typer.Argument(
+        settings.API_TOKEN,
+        envvar="TESTING_FARM_API_TOKEN",
+        show_default=False,
+        metavar='',
+        rich_help_panel='Environment variables',
+    ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
     tmt_plan_regex: Optional[str] = typer.Option(
-        None, "--plan", help="Regex for selecting plans, by default all plans are selected."
+        None,
+        "--plan",
+        help="Regex for selecting plans, by default all plans are selected.",
+        rich_help_panel=REQUEST_PANEL_TMT,
     ),
     tmt_plan_filter_regex: Optional[str] = typer.Option(
-        None, "--plan-filter", help="Regex for filtering plans, by default only enabled plans are executed."
+        None,
+        "--plan-filter",
+        help="Regex for filtering plans, by default only enabled plans are executed.",
+        rich_help_panel=REQUEST_PANEL_TMT,
     ),
-    tmt_test_filter_regex: Optional[str] = typer.Option(None, "--test-filter", help="Regex for filtering tests."),
+    tmt_test_filter_regex: Optional[str] = typer.Option(
+        None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
+    ),
     sti_playbooks: Optional[List[str]] = typer.Option(
-        None, "--playbook", help="Playbook to run, by default 'tests/tests*.yml', multiple playbooks can be specified."
+        None,
+        "--playbook",
+        help="Playbook to run, by default 'tests/tests*.yml', multiple playbooks can be specified.",
+        rich_help_panel=REQUEST_PANEL_STI,
     ),
     git_url: Optional[str] = typer.Option(
         None, help="URL of the GIT repository to test. If not set autodetected from current git repository."
@@ -190,11 +213,6 @@ def request(
 ):
     """
     Request testing from Testing Farm.
-
-    Environment variables:
-
-        TESTING_FARM_API_URL            - Testing Farm API URL
-        TESTING_FARM_API_TOKEN          - API token used to authenticate.
     """
     # Split comma separated arches
     arches = normalize_multistring_option(arches)
@@ -202,7 +220,7 @@ def request(
     git_available = bool(shutil.which("git"))
 
     # check for token
-    if not settings.API_TOKEN:
+    if not api_token:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
 
     # resolve git repository details from the current repository
@@ -318,7 +336,7 @@ def request(
 
     # create final request
     request = TestingFarmRequestV1
-    request["api_key"] = settings.API_TOKEN
+    request["api_key"] = api_token
     if test_type == "fmf":
         request["test"]["fmf"] = test
     else:
@@ -359,6 +377,22 @@ def request(
 
 def restart(
     request_id: str = typer.Argument(..., help="Testing Farm request ID or an string containing it."),
+    api_url: str = typer.Argument(
+        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
+    ),
+    internal_api_url: str = typer.Argument(
+        settings.INTERNAL_API_URL,
+        envvar="TESTING_FARM_INTERNAL_API_URL",
+        metavar='',
+        rich_help_panel='Environment variables',
+    ),
+    api_token: str = typer.Argument(
+        settings.API_TOKEN,
+        envvar="TESTING_FARM_API_TOKEN",
+        show_default=False,
+        metavar='',
+        rich_help_panel='Environment variables',
+    ),
     compose: Optional[str] = typer.Option(
         None,
         help="Change compose used to provision system-under-test. If not set it will use the compose from the original request.",  # noqa
@@ -370,12 +404,6 @@ def restart(
     Restart a Testing Farm request.
 
     Just pass a request ID or an URL with a request ID to restart it.
-
-    Environment variables:
-
-        TESTING_FARM_API_URL            - Testing Farm API URL
-        TESTING_FARM_INTERNAL_API_URL   - Internal Testing Farm API URL
-        TESTING_FARM_API_TOKEN          - API token used to authenticate.
     """
 
     # UUID pattern
@@ -392,9 +420,7 @@ def restart(
     _request_id = uuid_match.group()
 
     # Construct URL to the internal API
-    get_url = urllib.parse.urljoin(
-        str(settings.INTERNAL_API_URL), f"v0.1/requests/{_request_id}?api_key={settings.API_TOKEN}"
-    )
+    get_url = urllib.parse.urljoin(str(internal_api_url), f"v0.1/requests/{_request_id}?api_key={api_token}")
 
     # Setting up retries
     session = requests.Session()
@@ -433,7 +459,7 @@ def restart(
             environment["os"]["compose"] = compose
 
     # Add API key
-    request['api_key'] = settings.API_TOKEN
+    request['api_key'] = api_token
 
     # dry run
     if dry_run:
@@ -442,7 +468,7 @@ def restart(
         raise typer.Exit()
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
+    post_url = urllib.parse.urljoin(str(api_url), "v0.1/requests")
 
     # handle errors
     response = session.post(post_url, json=request)
@@ -457,4 +483,4 @@ def restart(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
-    watch(str(settings.API_URL), response.json()['id'], no_wait)
+    watch(str(api_url), response.json()['id'], no_wait)

@@ -12,7 +12,7 @@ pushd $TMPDIR
 # required id parameter
 testinfo "required --id parameter"
 testing-farm watch |& tee output
-egrep "^Error: Missing option '--id'.$" output
+egrep "Missing option '--id'." output
 
 # invalid id parameter
 testinfo "invalid --id parameter"

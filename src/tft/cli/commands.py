@@ -480,7 +480,7 @@ def restart(
         exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
 
     if response.status_code != 200:
-        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}. trigger")
 
     # watch
     watch(str(api_url), response.json()['id'], no_wait)

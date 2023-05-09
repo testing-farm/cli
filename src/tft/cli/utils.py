@@ -118,18 +118,27 @@ def install_http_retries(
     retries: int = settings.DEFAULT_API_RETRIES,
     retry_backoff_factor: int = settings.DEFAULT_RETRY_BACKOFF_FACTOR,
 ) -> None:
-    retry_strategy = Retry(
-        total=retries,
-        status_forcelist=[
+    # urllib3 1.26.0 deprecated method_whitelist, and 2.0.0 removed it:
+    #  - https://github.com/urllib3/urllib3/commit/382ab32f23795c44faae83b4e8b18a16fb605a0a
+    #  - https://github.com/urllib3/urllib3/commit/c67c0949e9c91c7621ea718a7f297ecac7c3b79e
+    if hasattr(Retry, "DEFAULT_ALLOWED_METHODS"):
+        allowed_retry_parameter = "allowed_methods"
+    else:
+        allowed_retry_parameter = "method_whitelist"
+
+    params = {
+        "total": retries,
+        "status_forcelist": [
             429,  # Too Many Requests
             500,  # Internal Server Error
             502,  # Bad Gateway
             503,  # Service Unavailable
             504,  # Gateway Timeout
         ],
-        method_whitelist=['HEAD', 'GET', 'POST', 'DELETE', 'PUT'],
-        backoff_factor=retry_backoff_factor,
-    )
+        allowed_retry_parameter: ['HEAD', 'GET', 'POST', 'DELETE', 'PUT'],
+        "backoff_factor": retry_backoff_factor,
+    }
+    retry_strategy = Retry(**params)
 
     timeout_adapter = TimeoutHTTPAdapter(timeout=timeout, max_retries=retry_strategy)
 

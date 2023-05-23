@@ -90,6 +90,11 @@ testinfo "test invalid tmt context"
 testing-farm request --context invalid | tee output
 egrep "⛔ Options for tmt context are invalid, must be defined as \`key=value\`" output
 
+# invalid kickstart
+testinfo "test invalid kickstart specification"
+testing-farm request --kickstart invalid | tee output
+egrep "⛔ Options for environment kickstart are invalid, must be defined as \`key=value\`" output
+
 # dry run
 testinfo "test dry run"
 testing-farm request --dry-run --compose Fedora | tee output
@@ -112,6 +117,11 @@ testing-farm request --dry-run --compose Fedora --arch x86_64 --arch aarch64 --a
 tail -n+6 output | jq -r .environments[0].arch | egrep '^x86_64$'
 tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
 tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
+
+# test kickstart
+testing-farm request --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart post-install="%post\n ls\n %end"  | tee output
+tail -n+4 output | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
+tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
 
 # test tags
 testinfo "test tags"

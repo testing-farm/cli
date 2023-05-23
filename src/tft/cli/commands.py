@@ -180,8 +180,17 @@ def request(
             "HW requirements, expresses as key/value pairs. Keys can consist of several properties, "
             "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
             "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/plans.html#hardware "
+            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
             "for the hardware specification."
+        ),
+    ),
+    kickstart: Optional[List[str]] = typer.Option(
+        None,
+        metavar="key=value",
+        help=(
+            "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
+            "For more information about the supported keys see "
+            "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
         ),
     ),
     pool: Optional[str] = typer.Option(
@@ -320,6 +329,9 @@ def request(
 
         if hardware:
             environment["hardware"] = hw_constraints(hardware)
+
+        if kickstart:
+            environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
 
         if redhat_brew_build:
             environment["artifacts"].extend(artifacts("redhat-brew-build", redhat_brew_build))

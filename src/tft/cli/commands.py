@@ -222,6 +222,14 @@ def request(
     tags: Optional[List[str]] = typer.Option(
         None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
     ),
+    watchdog_dispatch_delay: Optional[int] = typer.Option(
+        None,
+        help="How long (seconds) before the guest \"is-alive\" watchdog is dispatched. Note that this is implemented only in Artemis service.",  # noqa
+    ),
+    watchdog_period_delay: Optional[int] = typer.Option(
+        None,
+        help="How often (seconds) check that the guest \"is-alive\". Note that this is implemented only in Artemis service.",  # noqa
+    ),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
     """
@@ -347,8 +355,21 @@ def request(
 
         environments.append(environment)
 
-    if tags:
-        environments[0]["settings"] = {"provisioning": {"tags": options_to_dict("tags", tags)}}
+    if tags or watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
+        if "settings" not in environments[0]:
+            environments[0]["settings"] = {}
+
+        if 'provisioning' not in environments[0]["settings"]:
+            environments[0]["settings"]["provisioning"] = {}
+
+        if tags:
+            environments[0]["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
+
+        if watchdog_dispatch_delay is not None:
+            environments[0]["settings"]["provisioning"]["watchdog-dispatch-delay"] = watchdog_dispatch_delay
+
+        if watchdog_period_delay is not None:
+            environments[0]["settings"]["provisioning"]["watchdog-period-delay"] = watchdog_period_delay
 
     # create final request
     request = TestingFarmRequestV1

@@ -4,7 +4,7 @@ stages:
   - 🔎 test
   - 🚀 deploy
 
-image: quay.io/testing-farm/python-ci-image:2022-03-12
+image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 
 #
 # Mark tests to run for merge requests

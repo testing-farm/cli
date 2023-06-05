@@ -129,6 +129,11 @@ testing-farm request --dry-run --compose Fedora --tag FirstTag=FirstValue --tag 
 tail -n+4 output | jq -r .environments[].settings.provisioning.tags.FirstTag | egrep '^FirstValue$'
 tail -n+4 output | jq -r .environments[].settings.provisioning.tags.SecondTag | egrep '^SecondValue$'
 
+# test watchdogs
+testing-farm request --dry-run --compose Fedora --watchdog-period-delay 10 --watchdog-dispatch-delay 20 | tee output
+tail -n+4 output | jq -r '.environments[].settings.provisioning."watchdog-dispatch-delay"' | egrep '^20$'
+tail -n+4 output | jq -r '.environments[].settings.provisioning."watchdog-period-delay"' | egrep '^10$'
+
 # plan-filter
 testinfo "test plan-filter"
 testing-farm request --plan-filter "tag: plan-filter" --compose Fedora --dry-run | tee output

@@ -490,8 +490,11 @@ def restart(
         if key not in ['test', 'environments']:
             del request[key]
 
-    # Remove empty test keys
+    # Remove all empty keys in test
     for key in list(request['test']):
+        for subkey in list(request['test'][key] or []):
+            if not request['test'][key][subkey]:
+                del request['test'][key][subkey]
         if not request['test'][key]:
             del request['test'][key]
 

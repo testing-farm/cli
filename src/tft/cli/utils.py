@@ -3,7 +3,7 @@
 
 import subprocess
 import uuid
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 import requests.adapters
@@ -38,6 +38,11 @@ def artifacts(type: str, ids: List[str]) -> List[Dict[str, str]]:
 def blue(message: str) -> str:
     """Colorize text to bright blue color"""
     return typer.style(f"{message}", fg=typer.colors.BRIGHT_BLUE)
+
+
+def yellow(message: str) -> str:
+    """Colorize text to bright yellow color"""
+    return typer.style(f"{message}", fg=typer.colors.BRIGHT_YELLOW)
 
 
 def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
@@ -116,7 +121,8 @@ def install_http_retries(
     session: requests.Session,
     timeout: int = settings.DEFAULT_API_TIMEOUT,
     retries: int = settings.DEFAULT_API_RETRIES,
-    retry_backoff_factor: int = settings.DEFAULT_RETRY_BACKOFF_FACTOR,
+    retry_backoff_factor: float = settings.DEFAULT_RETRY_BACKOFF_FACTOR,
+    status_forcelist_extend: Optional[List[int]] = None,
 ) -> None:
     # urllib3 1.26.0 deprecated method_whitelist, and 2.0.0 removed it:
     #  - https://github.com/urllib3/urllib3/commit/382ab32f23795c44faae83b4e8b18a16fb605a0a
@@ -126,6 +132,8 @@ def install_http_retries(
     else:
         allowed_retry_parameter = "method_whitelist"
 
+    status_forcelist_extend = status_forcelist_extend or []
+
     params = {
         "total": retries,
         "status_forcelist": [
@@ -134,7 +142,8 @@ def install_http_retries(
             502,  # Bad Gateway
             503,  # Service Unavailable
             504,  # Gateway Timeout
-        ],
+        ]
+        + status_forcelist_extend,
         allowed_retry_parameter: ['HEAD', 'GET', 'POST', 'DELETE', 'PUT'],
         "backoff_factor": retry_backoff_factor,
     }

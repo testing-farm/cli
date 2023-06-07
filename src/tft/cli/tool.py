@@ -9,5 +9,6 @@ app = typer.Typer()
 
 app.command()(commands.request)
 app.command()(commands.restart)
+app.command()(commands.run)
 app.command()(commands.version)
 app.command()(commands.watch)

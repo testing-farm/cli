@@ -14,6 +14,8 @@ import pkg_resources
 import requests
 import typer
 from rich import print
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from tft.cli.config import settings
 from tft.cli.utils import (
@@ -26,17 +28,21 @@ from tft.cli.utils import (
     normalize_multistring_option,
     options_to_dict,
     uuid_valid,
+    yellow,
 )
 
 cli_version: str = pkg_resources.get_distribution("tft-cli").version
 
 TestingFarmRequestV1: Dict[str, Any] = {'api_key': None, 'test': {}, 'environments': None}
-Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifacts': None}
+Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifacts': None, 'variables': {}}
 TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
 REQUEST_PANEL_TMT = "TMT Options"
 REQUEST_PANEL_STI = "STI Options"
+
+RUN_REPO = "https://gitlab.com/testing-farm/tests"
+RUN_PLAN = "/testing-farm/sanity"
 
 
 def watch(
@@ -177,7 +183,7 @@ def request(
     hardware: List[str] = typer.Option(
         None,
         help=(
-            "HW requirements, expresses as key/value pairs. Keys can consist of several properties, "
+            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
             "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
             "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
             "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
@@ -523,3 +529,171 @@ def restart(
 
     # watch
     watch(str(api_url), response.json()['id'], no_wait)
+
+
+def run(
+    arch: str = typer.Option("x86_64", "--arch", help="Hardware platform of the target machine."),
+    compose: Optional[str] = typer.Option(
+        None,
+        help="Compose used to provision the target machine. If not set script will be executed aginst `fedora:latest` container.",  # noqa
+    ),
+    pool: Optional[str] = typer.Option(
+        None,
+        help="Force Testing Farm provisioning pool. By default the most suitable pool is used according to the hardware requirements.",  # noqa
+    ),
+    hardware: List[str] = typer.Option(
+        None,
+        help=(
+            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
+            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
+            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
+            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/plans.html#hardware "
+            "for the hardware specification."
+        ),
+    ),
+    variables: Optional[List[str]] = typer.Option(
+        None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
+    ),
+    secrets: Optional[List[str]] = typer.Option(
+        None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
+    ),
+    dry_run: bool = typer.Option(False, help="Do not run, just print request to Testing Farm"),
+    verbose: bool = typer.Option(False, help="Be verbose."),
+    command: List[str] = typer.Argument(..., help="Command to run. Use `--` to separate COMMAND from CLI options."),
+):
+    """
+    Run an arbitrary script via Testing Farm.
+    """
+
+    # check for token
+    if not settings.API_TOKEN:
+        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
+
+    # create request
+    request = TestingFarmRequestV1
+    request["api_key"] = settings.API_TOKEN
+
+    test = TestTMT
+    test["url"] = RUN_REPO
+    test["ref"] = "main"
+    test["name"] = "/testing-farm/sanity"
+    request["test"]["fmf"] = test
+
+    environment = Environment.copy()
+
+    environment["arch"] = arch
+    environment["pool"] = pool
+
+    if compose:
+        environment["os"] = {"compose": compose}
+
+    if secrets:
+        environment["secrets"] = options_to_dict("environment secrets", secrets)
+
+    if variables:
+        environment["variables"] = options_to_dict("environment variables", variables)
+
+    if hardware:
+        environment["hardware"] = hw_constraints(hardware)
+
+    environment["variables"]["SCRIPT"] = " ".join(command)
+
+    request["environments"] = [environment]
+
+    # submit request to Testing Farm
+    post_url = urllib.parse.urljoin(settings.API_URL, "v0.1/requests")
+
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    # dry run
+    if dry_run or verbose:
+        typer.secho(blue("🔍 showing POST json"))
+        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        if dry_run:
+            raise typer.Exit()
+
+    # handle errors
+    response = session.post(post_url, json=request)
+    if response.status_code == 404:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 400:
+        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+
+    if response.status_code != 200:
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    id = response.json()['id']
+    get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
+
+    if verbose:
+        typer.secho(f"🔎 api {blue(get_url)}")
+
+    # wait for the sanity test to finish
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Preparing execution environment", total=None)
+
+        current_state: str = ""
+
+        while True:
+            try:
+                response = session.get(get_url)
+
+            except requests.exceptions.ConnectionError as exc:
+                exit_error(f"connection to API failed: {str(exc)}")
+
+            if response.status_code != 200:
+                exit_error(f"Failed to get request: {response.text}")
+
+            request = response.json()
+
+            state = request["state"]
+
+            if state == current_state:
+                continue
+
+            current_state = state
+
+            if state in ["complete", "error"]:
+                break
+
+            time.sleep(1)
+
+        # workaround TFT-1690
+        install_http_retries(session, status_forcelist_extend=[404], timeout=60, retry_backoff_factor=0.1)
+
+        # get the command output
+        artifacts = response.json()['run']['artifacts']
+
+        if verbose:
+            typer.secho(f"\r🚢 artifacts {blue(artifacts)}")
+
+        try:
+            search = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts}/results.xml").text)
+
+        except requests.exceptions.ConnectionError:
+            typer.secho(f"\r🚫 {yellow('artifacts unreachable, are you on VPN?')}")
+            typer.secho(f"\r🚢 artifacts {blue(artifacts)}")
+            return
+
+    if not search:
+        exit_error("Could not find working directory, cannot continue")
+
+    assert search
+    workdir = str(search.groups(1)[0])
+    output = f"{workdir}/testing-farm/sanity/execute/data/guest/default-0/testing-farm/script-1/output.txt"
+
+    if verbose:
+        typer.secho(f"\r👷 workdir {blue(workdir)}")
+        typer.secho(f"\r📤 output {blue(output)}")
+
+    response = session.get(output)
+
+    console = Console()
+    console.print(response.text, end="")

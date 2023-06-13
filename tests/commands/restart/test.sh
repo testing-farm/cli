@@ -33,3 +33,8 @@ egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/on
 testinfo "valid request request id"
 testing-farm restart https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# plan and plan filter options, just sanity they are available
+testinfo "vlid request request id"
+testing-farm restart --plan myplan --plan-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

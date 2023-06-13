@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import json
 import os
 import re
@@ -27,6 +28,7 @@ from tft.cli.utils import (
     install_http_retries,
     normalize_multistring_option,
     options_to_dict,
+    read_glob_paths,
     uuid_valid,
     yellow,
 )
@@ -41,8 +43,15 @@ TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 REQUEST_PANEL_TMT = "TMT Options"
 REQUEST_PANEL_STI = "STI Options"
 
+RESERVE_PANEL_GENERAL = "General Options"
+RESERVE_PANEL_ENVIRONMENT = "Environment Options"
+
 RUN_REPO = "https://gitlab.com/testing-farm/tests"
 RUN_PLAN = "/testing-farm/sanity"
+
+RESERVE_PLAN = os.getenv("TESTING_FARM_RESERVE_PLAN", "/testing-farm/reserve")
+RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-farm/tests")
+RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 
 
 def watch(
@@ -79,6 +88,7 @@ def watch(
 
         if response.status_code == 404:
             exit_error("request with given ID not found")
+
         if response.status_code != 200:
             exit_error(f"failed to get request: {response.text}")
 
@@ -635,7 +645,7 @@ def run(
     request["environments"] = [environment]
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(settings.API_URL, "v0.1/requests")
+    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
 
     # Setting up retries
     session = requests.Session()
@@ -703,17 +713,17 @@ def run(
         install_http_retries(session, status_forcelist_extend=[404], timeout=60, retry_backoff_factor=0.1)
 
         # get the command output
-        artifacts = response.json()['run']['artifacts']
+        artifacts_url = response.json()['run']['artifacts']
 
         if verbose:
-            typer.secho(f"\r🚢 artifacts {blue(artifacts)}")
+            typer.secho(f"\r🚢 artifacts {blue(artifacts_url)}")
 
         try:
-            search = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts}/results.xml").text)
+            search = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts_url}/results.xml").text)
 
         except requests.exceptions.ConnectionError:
             typer.secho(f"\r🚫 {yellow('artifacts unreachable, are you on VPN?')}")
-            typer.secho(f"\r🚢 artifacts {blue(artifacts)}")
+            typer.secho(f"\r🚢 artifacts {blue(artifacts_url)}")
             return
 
     if not search:
@@ -731,3 +741,256 @@ def run(
 
     console = Console()
     console.print(response.text, end="")
+
+
+def reserve(
+    ssh_public_keys: List[str] = typer.Option(
+        ["~/.ssh/*.pub"],
+        "--ssh-public-key",
+        help="Path to SSH public key added to reserved machine. Supports globbing. By default '~/.ssh/*.pub'.",
+        rich_help_panel=RESERVE_PANEL_GENERAL,
+    ),
+    reservation_duration: int = typer.Option(
+        30,
+        "--duration",
+        help="Set the reservation duration in minutes. By default the reservation is for 30 minutes.",
+        rich_help_panel=RESERVE_PANEL_GENERAL,
+    ),
+    arch: str = typer.Option(
+        "x86_64", help="Hardware platform of the system to be provisioned.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+    ),
+    compose: str = typer.Option(
+        "Fedora-Rawhide",
+        help="Compose used to provision system-under-test. By default Fedora-Rawhide.",  # noqa
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    hardware: List[str] = typer.Option(
+        None,
+        help=(
+            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
+            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
+            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
+            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
+            "for the hardware specification."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    kickstart: Optional[List[str]] = typer.Option(
+        None,
+        metavar="key=value",
+        help=(
+            "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
+            "For more information about the supported keys see "
+            "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    pool: Optional[str] = typer.Option(
+        None,
+        help=(
+            "Force pool to provision. By default the most suited pool is used according to the hardware "
+            "requirements specified in tmt plans."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    fedora_koji_build: List[str] = typer.Option(
+        None, help="Koji build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+    ),
+    fedora_copr_build: List[str] = typer.Option(
+        None,
+        help=(
+            "Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`"
+            ", e.g. 1784470:fedora-32-x86_64."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    repository: List[str] = typer.Option(
+        None,
+        help="Repository base url to add to the test environment and install all packages from it.",
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
+    repository_file: List[str] = typer.Option(
+        None,
+        help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+    ),
+    redhat_brew_build: List[str] = typer.Option(
+        None, help="Brew build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+    ),
+    dry_run: bool = typer.Option(
+        False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL
+    ),
+):
+    """
+    Reserve a system in Testing Farm.
+    """
+
+    # check for token
+    if not settings.API_TOKEN:
+        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
+
+    pool_info = f"via pool {blue(pool)}" if pool else ""
+    typer.echo(f"💻 {blue(compose)} on {blue(arch)} {pool_info}")
+
+    # test details
+    test = TestTMT
+    test["url"] = RESERVE_URL
+    test["ref"] = RESERVE_REF
+    test["name"] = RESERVE_PLAN
+
+    # environment details
+    environment = Environment.copy()
+    environment["arch"] = arch
+    environment["pool"] = pool
+    environment["artifacts"] = []
+
+    if compose:
+        environment["os"] = {"compose": compose}
+
+    if hardware:
+        environment["hardware"] = hw_constraints(hardware)
+
+    if kickstart:
+        environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
+
+    if redhat_brew_build:
+        environment["artifacts"].extend(artifacts("redhat-brew-build", redhat_brew_build))
+
+    if fedora_koji_build:
+        environment["artifacts"].extend(artifacts("fedora-koji-build", fedora_koji_build))
+
+    if fedora_copr_build:
+        environment["artifacts"].extend(artifacts("fedora-copr-build", fedora_copr_build))
+
+    if repository:
+        environment["artifacts"].extend(artifacts("repository", repository))
+
+    if repository_file:
+        environment["artifacts"].extend(artifacts("repository-file", repository_file))
+
+    typer.echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
+    environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}
+
+    # set public keys, pass as a secret
+    authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
+    if not authorized_keys:
+        exit_error("No public SSH key found, they are required for accessing the machines.")
+
+    authorized_keys_bytes = base64.b64encode(authorized_keys)
+    environment["secrets"] = {"TF_RESERVATION_AUTHORIZED_KEYS_BASE64": authorized_keys_bytes.decode("utf-8")}
+
+    # create final request
+    request = TestingFarmRequestV1
+    request["api_key"] = settings.API_TOKEN
+    request["test"]["fmf"] = test
+
+    request["environments"] = [environment]
+
+    # submit request to Testing Farm
+    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
+
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    # dry run
+    if dry_run:
+        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        raise typer.Exit()
+
+    # handle errors
+    response = session.post(post_url, json=request)
+    if response.status_code == 404:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 400:
+        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+
+    if response.status_code != 200:
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    id = response.json()['id']
+    get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
+
+    typer.secho(f"🔎 {blue(get_url)}")
+
+    # IP address or hostname of the guest, extracted from pipeline.log
+    guest: str = ""
+
+    # wait for the reserve task to reserve the machine
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task_id = progress.add_task(description="Creating reservation", total=None)
+
+        current_state: str = ""
+
+        while current_state != "running":
+            try:
+                response = session.get(get_url)
+
+            except requests.exceptions.ConnectionError as exc:
+                exit_error(f"connection to API failed: {str(exc)}")
+
+            if response.status_code != 200:
+                exit_error(f"Failed to get request: {response.text}")
+
+            request = response.json()
+
+            state = request["state"]
+
+            if state == current_state:
+                continue
+
+            current_state = state
+
+            if state in ["complete", "error"]:
+                exit_error("Reservation failed, check API request or contact Testing Farm")
+
+            progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+
+            time.sleep(1)
+
+        while current_state != "ready":
+            progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+
+            # get the command output
+            artifacts_url = response.json()['run']['artifacts']
+
+            try:
+                pipeline_log = session.get(f"{artifacts_url}/pipeline.log").text
+
+                if not pipeline_log:
+                    exit_error(f"Pipeline log was empty. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+            except requests.exceptions.ConnectionError:
+                exit_error(
+                    f"""
+                    Failed to access Testing Farm artifacts.
+                    If you use Red Hat Ranch please make sure you are conneted to the VPN.
+                    Otherwise file an issue to {settings.ISSUE_TRACKER}.
+                """
+                )
+                return
+
+            if '[pre-artifact-installation]' in pipeline_log:
+                current_state = "preparing environment"
+
+            elif 'Guest is being provisioned' in pipeline_log:
+                current_state = "provisioning resources"
+
+            # match any hostname or IP address, slash to cover case of colored output
+            search = re.search(r'guest: ([\d\w\.-]+)', pipeline_log)
+
+            if search:
+                current_state = "ready"
+                guest = search.group(1)
+                continue
+
+            time.sleep(1)
+
+    typer.secho(f"🌎 ssh root@{guest}")
+
+    os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")

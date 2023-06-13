@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import glob
+import os
 import subprocess
 import uuid
 from typing import Any, Dict, List, Optional, Union
@@ -157,3 +159,17 @@ def install_http_retries(
 
 def normalize_multistring_option(options: List[str], separator: str = ',') -> List[str]:
     return sum([[option.strip() for option in item.split(separator)] for item in options], [])
+
+
+def read_glob_paths(glob_paths: List[str]) -> str:
+    paths = [path for glob_path in glob_paths for path in glob.glob(os.path.expanduser(glob_path))]
+
+    contents: List[str] = []
+
+    for path in paths:
+        if not os.path.isfile(path) or not os.access(path, os.R_OK):
+            exit_error(f"Error reading '{path}'.")
+        with open(path, 'r') as file:
+            contents.append(file.read())
+
+    return ''.join(contents)

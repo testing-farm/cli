@@ -225,6 +225,10 @@ def request(
     repository: List[str] = typer.Option(
         None, help="Repository base url to add to the test environment and install all packages from it."
     ),
+    repository_file: List[str] = typer.Option(
+        None,
+        help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+    ),
     tags: Optional[List[str]] = typer.Option(
         None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
     ),
@@ -358,6 +362,9 @@ def request(
 
         if repository:
             environment["artifacts"].extend(artifacts("repository", repository))
+
+        if repository_file:
+            environment["artifacts"].extend(artifacts("repository-file", repository_file))
 
         environments.append(environment)
 

@@ -449,6 +449,18 @@ def restart(
         None,
         help="Change compose used to provision system-under-test. If not set it will use the compose from the original request.",  # noqa
     ),
+    tmt_plan_regex: Optional[str] = typer.Option(
+        None,
+        "--plan",
+        help="Regex for selecting plans, by default all plans are selected.",
+        rich_help_panel=REQUEST_PANEL_TMT,
+    ),
+    tmt_plan_filter_regex: Optional[str] = typer.Option(
+        None,
+        "--plan-filter",
+        help="Regex for filtering plans, by default only enabled plans are executed.",
+        rich_help_panel=REQUEST_PANEL_TMT,
+    ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
@@ -512,6 +524,18 @@ def restart(
             if environment.get("os") is None:
                 environment["os"] = {}
             environment["os"]["compose"] = compose
+
+    test_type = "fmf" if "fmf" in request["test"] else "sti"
+
+    if tmt_plan_regex:
+        if test_type == "sti":
+            exit_error("The '--plan' option is compabitble only with 'tmt` tests.")
+        request["test"][test_type]["name"] = tmt_plan_regex
+
+    if tmt_plan_filter_regex:
+        if test_type == "sti":
+            exit_error("The '--plan-filter' option is compabitble only with 'tmt` tests.")
+        request["test"][test_type]["plan_filter"] = tmt_plan_filter_regex
 
     # Add API key
     request['api_key'] = api_token

@@ -1,0 +1,2 @@
+summary: Test reserve command
+test: ./test.sh

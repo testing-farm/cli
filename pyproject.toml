@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tft-cli"
-version = "0.0.9"
+version = "0.0.10"
 description = "Testing Farm CLI tool"
 authors = ["Miroslav Vadkerti <mvadkert@redhat.com>"]
 license = "Apache-2.0"

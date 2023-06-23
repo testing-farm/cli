@@ -149,5 +149,12 @@ testinfo "test test-filter"
 testing-farm request --test-filter "tag: test-filter" --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .test.fmf.test_filter | egrep '^tag: test-filter$'
 
+# merge-sha
+testinfo "test merge-sha"
+testing-farm request --git-merge-sha to-be-merged --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .test.fmf.merge_sha | egrep 'to-be-merged'
+testing-farm request --test-type sti --git-url foo --git-merge-sha to-be-merged --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .test.sti.merge_sha | egrep 'to-be-merged'
+
 # remove temporary directory
 rm -rf $TMPDIR

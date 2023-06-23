@@ -185,6 +185,9 @@ def request(
     git_ref: str = typer.Option(
         "main", help="GIT ref or branch to test. If not set autodetected from current git repository."
     ),
+    git_merge_sha: Optional[str] = typer.Option(
+        None, help="GIT ref or branch into which --ref will be merged, if specified."
+    ),
     arches: List[str] = typer.Option(["x86_64"], "--arch", help="Hardware platforms of the system to be provisioned."),
     compose: Optional[str] = typer.Option(
         None,
@@ -328,6 +331,9 @@ def request(
     test = TestTMT if test_type == "fmf" else TestSTI
     test["url"] = git_url
     test["ref"] = git_ref
+
+    if git_merge_sha:
+        test["merge_sha"] = git_merge_sha
 
     if tmt_plan_regex:
         test["name"] = tmt_plan_regex

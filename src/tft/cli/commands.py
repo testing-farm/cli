@@ -471,6 +471,9 @@ def restart(
         help="Regex for filtering plans, by default only enabled plans are executed.",
         rich_help_panel=REQUEST_PANEL_TMT,
     ),
+    worker_image: Optional[str] = typer.Option(
+        None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
+    ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
 ):
@@ -546,6 +549,14 @@ def restart(
         if test_type == "sti":
             exit_error("The '--plan-filter' option is compabitble only with 'tmt` tests.")
         request["test"][test_type]["plan_filter"] = tmt_plan_filter_regex
+
+    # worker image
+    if worker_image:
+        typer.echo(f"👷 forcing worker image {blue(worker_image)}")
+        request["settings"] = request["settings"] if request.get("settings") else {}
+        request["settings"]["worker"] = {"image": worker_image}
+        # it is required to have also pipeline key set, otherwise API will fail
+        request["settings"]["pipeline"] = request["settings"].get("pipeline", {})
 
     # Add API key
     request['api_key'] = api_token

@@ -25,16 +25,16 @@ testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e8452 | tee output
 egrep "^⛔ Could not find a valid Testing Farm request id in '40cafaa3-0efa-4abf-a20b-a6ad87e8452'.$" output
 
 # valid request id, no token
-testinfo "valid request request id"
+testinfo "valid request request id, no token"
 testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
-# valid request id, no token
-testinfo "valid request request id"
-testing-farm restart https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+# plan and plan filter options, just sanity test that they are available
+testinfo "plan and plan filter options accepted"
+testing-farm restart --plan myplan --plan-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
-# plan and plan filter options, just sanity they are available
-testinfo "vlid request request id"
-testing-farm restart --plan myplan --plan-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+# worker-image option, just test it is accepted
+testinfo "worker-image option accepted"
+testing-farm restart --worker-image quay.io/testing-farm/worker:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

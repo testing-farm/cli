@@ -992,10 +992,10 @@ def reserve(
             elif 'Guest is being provisioned' in pipeline_log:
                 current_state = "provisioning resources"
 
-            # match any hostname or IP address, slash to cover case of colored output
-            search = re.search(r'guest: ([\d\w\.-]+)', pipeline_log)
+            # match any hostname or IP address from gluetool modules log
+            search = re.search(r'Guest is ready.*root@([\d\w\.-]+)', pipeline_log)
 
-            if search:
+            if search and 'execute task #1' in pipeline_log:
                 current_state = "ready"
                 guest = search.group(1)
                 continue

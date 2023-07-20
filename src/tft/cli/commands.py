@@ -804,6 +804,14 @@ def reserve(
         ),
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
+    hostname: Optional[str] = typer.Option(
+        None,
+        help=(
+            "Specific host to provision. Some pools support requesting a specific host. "
+            "If no pool is specified, the pool that has the host will be used to provision the host."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+    ),
     fedora_koji_build: List[str] = typer.Option(
         None, help="Koji build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
     ),
@@ -852,6 +860,7 @@ def reserve(
     environment = Environment.copy()
     environment["arch"] = arch
     environment["pool"] = pool
+    environment["hostname"] = hostname
     environment["artifacts"] = []
 
     if compose:

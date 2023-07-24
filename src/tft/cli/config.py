@@ -12,6 +12,7 @@ settings = LazySettings(
     API_TOKEN=None,
     ISSUE_TRACKER="https://gitlab.com/testing-farm/general/-/issues/new",
     ONBOARDING_DOCS="https://docs.testing-farm.io/general/0.1/onboarding.html",
+    CONTAINER_SIGN="/.testing-farm-container",
     WATCH_TICK=3,
     DEFAULT_API_TIMEOUT=10,
     DEFAULT_API_RETRIES=7,

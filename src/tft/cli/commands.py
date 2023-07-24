@@ -1005,3 +1005,11 @@ def reserve(
     typer.secho(f"🌎 ssh root@{guest}")
 
     os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
+
+
+def update():
+    """
+    Update the CLI tool container image.
+    """
+    # NOTE: This command is handled by the shell wrapper, see `container/testing-farm` file
+    pass

@@ -5,6 +5,9 @@ FROM python:3.9.10-alpine
 # git  - required for auto-detection
 RUN apk add --no-cache bash git
 
+# This file is used to detect if CLI is running inside this container image
+RUN touch /.testing-farm-container
+
 COPY dist/tft_cli*.whl .
 
 RUN pip install tft_cli*.whl && rm -f tft_cli*.whl

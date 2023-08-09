@@ -758,7 +758,7 @@ def reserve(
     ssh_public_keys: List[str] = typer.Option(
         ["~/.ssh/*.pub"],
         "--ssh-public-key",
-        help="Path to SSH public key added to reserved machine. Supports globbing. By default '~/.ssh/*.pub'.",
+        help="Path to SSH public key(s) used to connect. Supports globbing.",
         rich_help_panel=RESERVE_PANEL_GENERAL,
     ),
     reservation_duration: int = typer.Option(
@@ -881,10 +881,13 @@ def reserve(
     typer.echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
     environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}
 
-    # set public keys, pass as a secret
     authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
     if not authorized_keys:
-        exit_error("No public SSH key found, they are required for accessing the machines.")
+        exit_error(f"No public SSH keys found under {', '.join(ssh_public_keys)}, cannot continue.")
+
+    # check for ssh-agent, we require it for a pleasant usage
+    if not os.getenv('SSH_AUTH_SOCK'):
+        exit_error("No 'ssh-agent' seems to be running, it is required for reservations to work, cannot continue.")
 
     authorized_keys_bytes = base64.b64encode(authorized_keys)
     environment["secrets"] = {"TF_RESERVATION_AUTHORIZED_KEYS_BASE64": authorized_keys_bytes.decode("utf-8")}
@@ -982,9 +985,18 @@ def reserve(
                     Failed to access Testing Farm artifacts.
                     If you use Red Hat Ranch please make sure you are conneted to the VPN.
                     Otherwise file an issue to {settings.ISSUE_TRACKER}.
-                """
+                """.rstrip()
                 )
                 return
+
+            if 'Result of testing: ERROR' in pipeline_log:
+                exit_error(
+                    f"""
+                    Failed to run reservation task.
+                    Check status page {settings.STATUS_PAGE} for outages.
+                    File an issue to {settings.ISSUE_TRACKER} if needed.
+                """.rstrip()
+                )
 
             if '[pre-artifact-installation]' in pipeline_log:
                 current_state = "preparing environment"

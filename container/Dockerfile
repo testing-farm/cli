@@ -1,9 +1,10 @@
 # build image
 FROM python:3.9.10-alpine
 
-# bash - required to run tmt tests against the container
-# git  - required for auto-detection
-RUN apk add --no-cache bash git
+# bash            - required to run tmt tests against the container
+# git             - required for auto-detection
+# openssh-client  - required for reserve command
+RUN apk add --no-cache bash git openssh-client
 
 # This file is used to detect if CLI is running inside this container image
 RUN touch /.testing-farm-container

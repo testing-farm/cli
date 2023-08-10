@@ -21,11 +21,21 @@ export TESTING_FARM_API_TOKEN=invalid
 testing-farm reserve --ssh-public-key /this-does-not-exist-really | tee output
 egrep "^💻 Fedora-Rawhide on x86_64" output
 egrep "^🕗 Reserved for 30 minutes$" output
-egrep "⛔ No public SSH key found, they are required for accessing the machines." output
+egrep "⛔ No public SSH keys found under /this-does-not-exist-really, cannot continue." output
 
-# create fake "ssh" key
+# create fake "ssh" key and ssh agent
 echo "some-key" > /var/tmp/some-key
 ssh_key_option="--ssh-public-key /var/tmp/some-key"
+
+# no ssh-agent
+testinfo "no ssh agent"
+testing-farm reserve $ssh_key_option | tee output
+egrep "^💻 Fedora-Rawhide on x86_64" output
+egrep "^🕗 Reserved for 30 minutes$" output
+egrep "⛔ No 'ssh-agent' seems to be running, it is required for reservations to work, cannot continue." output
+
+# create a fake ssh agent
+export SSH_AUTH_SOCK=/some-socket
 
 # defaults + invalid token
 testinfo "defaults + invalid token"

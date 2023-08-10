@@ -15,11 +15,32 @@ if git rev-parse --git-dir &>/dev/null; then
     MOUNT_GIT="-v ${GIT_DIR%.git}:/code:Z"
 fi
 
-# image update
+# testing-farm image and wrapper update
 if [ "$1" == "update" ]; then
+    curl -Lo $(readlink -f $0) https://gitlab.com/testing-farm/cli/-/raw/main/container/testing-farm
     podman pull $IMAGE
     exit 0
 fi
 
+# mount $HOME/.ssh direcotry
+if [ "$1" == "reserve" ]; then
+    if grep -q -- '--ssh-public-key' <<< "$*"; then
+        echo "Option '--ssh-public-key' is not supported with container installation. Use the default settings please."
+        exit 255
+    fi
+    if [ -z "$SSH_AUTH_SOCK" -o ! -e "$SSH_AUTH_SOCK" ]; then
+        echo "Could not detect a running ssh-agent, cannot continue."
+        exit 255
+    fi
+    if [ ! -d "$HOME/.ssh" ]; then
+        echo "SSH key directory '$HOME/.ssh' not found, cannot continue."
+        exit 255
+     fi
+
+    # To share ssh agent, we need disable SELinux confinement
+    # https://www.redhat.com/sysadmin/privileged-flag-container-engines
+    MOUNT_SSH="-v $HOME/.ssh:/root/.ssh:Z -v $SSH_AUTH_SOCK:$SSH_AUTH_SOCK:Z -e SSH_AUTH_SOCK=$SSH_AUTH_SOCK --security-opt label=disable"
+fi
+
 # run the tool
-podman run -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $IMAGE testing-farm "$@"
+podman run -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"

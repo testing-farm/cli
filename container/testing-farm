@@ -4,8 +4,9 @@
 IMAGE=${IMAGE:-quay.io/testing-farm/cli:latest}
 
 # check for podman
-if ! command -v podman &>/dev/null; then
-    echo "⛔ podman not found, it is required for the tool to run."
+CONTAINER_RUNTIME=$(command -v podman || command -v docker)
+if [ -z "$CONTAINER_RUNTIME" ]; then
+    echo "⛔ No podman or docker not found. Container runtime is required for the tool."
     exit 255
 fi
 
@@ -18,7 +19,7 @@ fi
 # testing-farm image and wrapper update
 if [ "$1" == "update" ]; then
     curl -Lo $(readlink -f $0) https://gitlab.com/testing-farm/cli/-/raw/main/container/testing-farm
-    podman pull $IMAGE
+    $CONTAINER_RUNTIME pull $IMAGE
     exit 0
 fi
 
@@ -43,4 +44,4 @@ if [ "$1" == "reserve" ]; then
 fi
 
 # run the tool
-podman run --network=host -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"
+$CONTAINER_RUNTIME run --network=host -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"

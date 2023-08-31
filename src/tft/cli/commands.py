@@ -428,9 +428,13 @@ def request(
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
-        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+        exit_error(
+            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
+        )
 
     if response.status_code != 200:
+        print(response.text)
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
@@ -576,10 +580,13 @@ def restart(
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
-        print(response.text)
-        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+        exit_error(
+            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
+        )
 
     if response.status_code != 200:
+        print(response.text)
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
@@ -678,6 +685,7 @@ def run(
         exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
 
     if response.status_code != 200:
+        print(response.text)
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     id = response.json()['id']
@@ -918,9 +926,13 @@ def reserve(
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
-        exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
+        exit_error(
+            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
+        )
 
     if response.status_code != 200:
+        print(response.text)
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     id = response.json()['id']

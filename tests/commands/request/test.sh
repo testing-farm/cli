@@ -33,6 +33,11 @@ egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 egrep "💻 container image in plan on x86_64" output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
+# test x86_64 only without compose
+testinfo "x86_64 only without compose"
+testing-farm request --arch aarch64,s390x | tee output
+egrep "⛔ Without compose the tests run against a container image specified in the plan. Only 'x86_64' architecture supported in this case." output
+
 # test GitHub https mapping
 testinfo "test GitHub mapping"
 git remote set-url origin git@github.com:testing-farm/cli

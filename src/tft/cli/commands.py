@@ -264,6 +264,12 @@ def request(
     if not api_token:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
 
+    if not compose and arches != ['x86_64']:
+        exit_error(
+            "Without compose the tests run against a container image specified in the plan. "
+            "Only 'x86_64' architecture supported in this case."
+        )
+
     # resolve git repository details from the current repository
     if not git_url:
         if not git_available:

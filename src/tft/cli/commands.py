@@ -469,6 +469,16 @@ def restart(
         None,
         help="Change compose used to provision system-under-test. If not set it will use the compose from the original request.",  # noqa
     ),
+    hardware: List[str] = typer.Option(
+        None,
+        help=(
+            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
+            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
+            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
+            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
+            "for the hardware specification."
+        ),
+    ),
     tmt_plan_regex: Optional[str] = typer.Option(
         None,
         "--plan",
@@ -542,11 +552,16 @@ def restart(
 
     # Set compose
     if compose:
-        typer.echo(f"💻 forcing {blue(compose)}")
+        typer.echo(f"💻 forcing compose {blue(compose)}")
         for environment in request['environments']:
             if environment.get("os") is None:
                 environment["os"] = {}
             environment["os"]["compose"] = compose
+
+    if hardware:
+        typer.echo(f"💻 forcing hardware {blue(' '.join(hardware))}")
+        for environment in request['environments']:
+            environment["hardware"] = hw_constraints(hardware)
 
     test_type = "fmf" if "fmf" in request["test"] else "sti"
 

@@ -38,3 +38,8 @@ egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/on
 testinfo "worker-image option accepted"
 testing-farm restart --worker-image quay.io/testing-farm/worker:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# worker-image option, just test it is accepted
+testinfo "hardware option accepted"
+testing-farm restart --hardware boot.mode=uefi https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

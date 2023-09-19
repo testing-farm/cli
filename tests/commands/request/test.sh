@@ -156,5 +156,11 @@ tail -n+4 output | jq -r .test.fmf.merge_sha | egrep 'to-be-merged'
 testing-farm request --test-type sti --git-url foo --git-merge-sha to-be-merged --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .test.sti.merge_sha | egrep 'to-be-merged'
 
+# tmt environment variables
+testinfo "test tmt environment variables"
+testing-farm request --dry-run --compose Fedora --tmt-environment FirstKey=FirstValue -T SecondKey=SecondValue | tee output
+tail -n+4 output | jq -r .environments[].tmt.environment.FirstKey | egrep '^FirstValue$'
+tail -n+4 output | jq -r .environments[].tmt.environment.SecondKey | egrep '^SecondValue$'
+
 # remove temporary directory
 rm -rf $TMPDIR

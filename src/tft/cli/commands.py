@@ -225,6 +225,16 @@ def request(
     secrets: Optional[List[str]] = typer.Option(
         None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
     ),
+    tmt_environment: Optional[List[str]] = typer.Option(
+        None,
+        "-T",
+        "--tmt-environment",
+        metavar="key=value",
+        help=(
+            "Environment variables to pass to the tmt process. "
+            "Used to configure tmt report plugins like reportportal or polarion."
+        ),
+    ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     worker_image: Optional[str] = typer.Option(
         None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
@@ -354,6 +364,7 @@ def request(
         environment["arch"] = arch
         environment["pool"] = pool
         environment["artifacts"] = []
+        environment["tmt"] = {}
 
         if compose:
             environment["os"] = {"compose": compose}
@@ -362,7 +373,7 @@ def request(
             environment["secrets"] = options_to_dict("environment secrets", secrets)
 
         if tmt_context:
-            environment["tmt"] = {"context": options_to_dict("tmt context", tmt_context)}
+            environment["tmt"].update({"context": options_to_dict("tmt context", tmt_context)})
 
         if variables:
             environment["variables"] = options_to_dict("environment variables", variables)
@@ -387,6 +398,9 @@ def request(
 
         if repository_file:
             environment["artifacts"].extend(artifacts("repository-file", repository_file))
+
+        if tmt_environment:
+            environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
 
         environments.append(environment)
 
@@ -421,6 +435,7 @@ def request(
     # worker image
     if worker_image:
         request["settings"]["worker"] = {"image": worker_image}
+
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 

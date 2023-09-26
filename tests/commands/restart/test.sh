@@ -29,9 +29,19 @@ testinfo "valid request request id, no token"
 testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
+# git-url, git-ref and git-merge-sha options, just sanity test that they are available
+testinfo "git-url, git-ref and git-merge-sha options accepted"
+testing-farm restart --git-url https://example.com --git-ref some-ref --git-merge-sha some-sha https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
 # plan and plan filter options, just sanity test that they are available
 testinfo "plan and plan filter options accepted"
 testing-farm restart --plan myplan --plan-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# test filter option, just sanity test that it is available
+testinfo "test filter option accepted"
+testing-farm restart --test-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
 # worker-image option, just test it is accepted

@@ -180,10 +180,10 @@ def request(
         rich_help_panel=REQUEST_PANEL_STI,
     ),
     git_url: Optional[str] = typer.Option(
-        None, help="URL of the GIT repository to test. If not set autodetected from current git repository."
+        None, help="URL of the GIT repository to test. If not set, autodetected from current git repository."
     ),
     git_ref: str = typer.Option(
-        "main", help="GIT ref or branch to test. If not set autodetected from current git repository."
+        "main", help="GIT ref or branch to test. If not set, autodetected from current git repository."
     ),
     git_merge_sha: Optional[str] = typer.Option(
         None, help="GIT ref or branch into which --ref will be merged, if specified."
@@ -191,7 +191,7 @@ def request(
     arches: List[str] = typer.Option(["x86_64"], "--arch", help="Hardware platforms of the system to be provisioned."),
     compose: Optional[str] = typer.Option(
         None,
-        help="Compose used to provision system-under-test. If not set tests will expect 'container' provision method specified in tmt plans.",  # noqa
+        help="Compose used to provision system-under-test. If not set, tests will expect 'container' provision method specified in tmt plans.",  # noqa
     ),
     hardware: List[str] = typer.Option(
         None,
@@ -488,8 +488,11 @@ def restart(
     ),
     compose: Optional[str] = typer.Option(
         None,
-        help="Change compose used to provision system-under-test. If not set it will use the compose from the original request.",  # noqa
+        help="Force compose used to provision test environment.",  # noqa
     ),
+    git_url: Optional[str] = typer.Option(None, help="Force URL of the GIT repository to test."),
+    git_ref: Optional[str] = typer.Option(None, help="Force GIT ref or branch to test."),
+    git_merge_sha: Optional[str] = typer.Option(None, help="Force GIT ref or branch into which --ref will be merged."),
     hardware: List[str] = typer.Option(
         None,
         help=(
@@ -511,6 +514,9 @@ def restart(
         "--plan-filter",
         help="Regex for filtering plans, by default only enabled plans are executed.",
         rich_help_panel=REQUEST_PANEL_TMT,
+    ),
+    tmt_test_filter_regex: Optional[str] = typer.Option(
+        None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
     ),
     worker_image: Optional[str] = typer.Option(
         None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
@@ -563,13 +569,34 @@ def restart(
         if key not in ['test', 'environments']:
             del request[key]
 
+    test = request['test']
+
     # Remove all empty keys in test
-    for key in list(request['test']):
-        for subkey in list(request['test'][key] or []):
-            if not request['test'][key][subkey]:
-                del request['test'][key][subkey]
-        if not request['test'][key]:
-            del request['test'][key]
+    for key in list(test):
+        for subkey in list(test[key] or []):
+            if not test[key][subkey]:
+                del test[key][subkey]
+        if not test[key]:
+            del test[key]
+
+    # add test type
+    test = request['test'][list(request['test'].keys())[0]]
+
+    if git_url:
+        test["url"] = git_url
+
+    if git_ref:
+        test["ref"] = git_ref
+
+    if tmt_test_filter_regex:
+        test["test_filter"] = tmt_test_filter_regex
+
+    merge_sha_info = ""
+    if git_merge_sha:
+        test["merge_sha"] = git_merge_sha
+        merge_sha_info = f"merge_sha {blue(git_merge_sha)}"
+
+    typer.echo(f"📦 repository {blue(test['url'])} ref {blue(test['ref'])} {merge_sha_info}")
 
     # Set compose
     if compose:
@@ -639,7 +666,7 @@ def run(
     arch: str = typer.Option("x86_64", "--arch", help="Hardware platform of the target machine."),
     compose: Optional[str] = typer.Option(
         None,
-        help="Compose used to provision the target machine. If not set script will be executed aginst `fedora:latest` container.",  # noqa
+        help="Compose used to provision the target machine. If not set, script will be executed aginst `fedora:latest` container.",  # noqa
     ),
     pool: Optional[str] = typer.Option(
         None,

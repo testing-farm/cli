@@ -490,6 +490,10 @@ def restart(
         None,
         help="Force compose used to provision test environment.",  # noqa
     ),
+    pool: Optional[str] = typer.Option(
+        None,
+        help="Force pool to provision.",
+    ),
     git_url: Optional[str] = typer.Option(None, help="Force URL of the GIT repository to test."),
     git_ref: Optional[str] = typer.Option(None, help="Force GIT ref or branch to test."),
     git_merge_sha: Optional[str] = typer.Option(None, help="Force GIT ref or branch into which --ref will be merged."),
@@ -610,6 +614,11 @@ def restart(
         typer.echo(f"💻 forcing hardware {blue(' '.join(hardware))}")
         for environment in request['environments']:
             environment["hardware"] = hw_constraints(hardware)
+
+    if pool:
+        typer.echo(f"💻 forcing pool {blue(pool)}")
+        for environment in request['environments']:
+            environment["pool"] = pool
 
     test_type = "fmf" if "fmf" in request["test"] else "sti"
 

@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import time
 import urllib.parse
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import pkg_resources
@@ -52,6 +53,10 @@ RUN_PLAN = "/testing-farm/sanity"
 RESERVE_PLAN = os.getenv("TESTING_FARM_RESERVE_PLAN", "/testing-farm/reserve")
 RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-farm/tests")
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
+
+
+class PipelineType(str, Enum):
+    tmt_multihost = "tmt-multihost"
 
 
 def watch(
@@ -264,6 +269,7 @@ def request(
         help="How often (seconds) check that the guest \"is-alive\". Note that this is implemented only in Artemis service.",  # noqa
     ),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
+    pipeline_type: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type."),
     post_install_script: Optional[str] = typer.Option(
         None, help="Post-install script to run right after the guest boots for the first time."
     ),
@@ -438,6 +444,9 @@ def request(
     request["settings"] = {}
     request["settings"]["pipeline"] = {"timeout": timeout}
 
+    if pipeline_type:
+        request["settings"]["pipeline"]["type"] = pipeline_type.value
+
     # worker image
     if worker_image:
         request["settings"]["worker"] = {"image": worker_image}
@@ -533,6 +542,7 @@ def restart(
     ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
+    pipeline_type: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type."),
 ):
     """
     Restart a Testing Farm request.
@@ -648,6 +658,13 @@ def restart(
 
     # Add API key
     request['api_key'] = api_token
+
+    if pipeline_type:
+        if "settings" not in request:
+            request["settings"] = {}
+        if "pipeline" not in request["settings"]:
+            request["settings"]["pipeline"] = {}
+        request["settings"]["pipeline"]["type"] = pipeline_type.value
 
     # dry run
     if dry_run:

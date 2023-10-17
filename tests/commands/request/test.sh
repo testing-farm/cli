@@ -173,5 +173,13 @@ testinfo "test post install script"
 testing-farm request --dry-run --compose Fedora --post-install-script="some-script" | tee output
 tail -n+4 output | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
 
+# pipeline type
+testinfo "test pipeline type"
+testing-farm request --pipeline-type tmt-multihost --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .settings.pipeline.type | egrep 'tmt-multihost'
+
+testing-farm request --pipeline-type invalid --compose Fedora --dry-run 2>&1 | tee output
+egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
+
 # remove temporary directory
 rm -rf $TMPDIR

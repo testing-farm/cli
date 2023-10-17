@@ -304,10 +304,10 @@ def request(
         git_url = cmd_output_or_exit("git remote get-url origin", "could not auto-detect git url")
         # use https instead git when auto-detected
         # GitLab: git@github.com:containers/podman.git
-        # GitHub: git@gitlab.com:testing-farm/cli.git
+        # GitHub: git@gitlab.com:testing-farm/cli.git, git+ssh://git@gitlab.com/spoore/centos_rpms_jq.git
         # Pagure: ssh://git@pagure.io/fedora-ci/messages.git
         assert git_url
-        git_url = re.sub(r"^(?:ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
+        git_url = re.sub(r"^(?:(?:git\+)?ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
 
         # detect git ref
         git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")

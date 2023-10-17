@@ -50,6 +50,12 @@ git remote set-url origin git@gitlab.com:testing-farm/cli
 testing-farm request | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 
+# test GitLab https mapping #2
+testinfo "test GitLab mapping"
+git remote set-url origin git+ssh://git@gitlab.com/spoore/centos_rpms_jq.git
+testing-farm request | tee output
+egrep "📦 repository https://gitlab.com/spoore/centos_rpms_jq.git ref main" output
+
 # test Pagure https mapping
 testinfo "test Pagure mapping"
 git remote set-url origin ssh://git@pagure.io/testing-farm/cli

@@ -42,7 +42,7 @@ pip install --user tft-cli
 Required only if you will be submitting requests to Testing Farm.
 ====
 
-Before using the CLI for submitting requests, you will need to https://docs.testing-farm.io/general/0.1/onboarding.html[onboard and get an API key].
+Before using the CLI for submitting requests, you will need to https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html[onboard and get an API key].
 
 == Usage
 

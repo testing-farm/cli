@@ -168,5 +168,10 @@ testing-farm request --dry-run --compose Fedora --tmt-environment FirstKey=First
 tail -n+4 output | jq -r .environments[].tmt.environment.FirstKey | egrep '^FirstValue$'
 tail -n+4 output | jq -r .environments[].tmt.environment.SecondKey | egrep '^SecondValue$'
 
+# post install script
+testinfo "test post install script"
+testing-farm request --dry-run --compose Fedora --post-install-script="some-script" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
+
 # remove temporary directory
 rm -rf $TMPDIR

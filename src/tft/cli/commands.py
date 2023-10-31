@@ -264,6 +264,9 @@ def request(
         help="How often (seconds) check that the guest \"is-alive\". Note that this is implemented only in Artemis service.",  # noqa
     ),
     dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
+    post_install_script: Optional[str] = typer.Option(
+        None, help="Post-install script to run right after the guest boots for the first time."
+    ),
 ):
     """
     Request testing from Testing Farm.
@@ -404,21 +407,24 @@ def request(
 
         environments.append(environment)
 
-    if tags or watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
+    if tags or watchdog_dispatch_delay or watchdog_period_delay or post_install_script:
         if "settings" not in environments[0]:
             environments[0]["settings"] = {}
 
         if 'provisioning' not in environments[0]["settings"]:
             environments[0]["settings"]["provisioning"] = {}
 
-        if tags:
-            environments[0]["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
+    if tags:
+        environments[0]["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
 
-        if watchdog_dispatch_delay is not None:
-            environments[0]["settings"]["provisioning"]["watchdog-dispatch-delay"] = watchdog_dispatch_delay
+    if watchdog_dispatch_delay is not None:
+        environments[0]["settings"]["provisioning"]["watchdog-dispatch-delay"] = watchdog_dispatch_delay
 
-        if watchdog_period_delay is not None:
-            environments[0]["settings"]["provisioning"]["watchdog-period-delay"] = watchdog_period_delay
+    if watchdog_period_delay is not None:
+        environments[0]["settings"]["provisioning"]["watchdog-period-delay"] = watchdog_period_delay
+
+    if post_install_script:
+        environments[0]["settings"]["provisioning"]["post_install_script"] = post_install_script
 
     # create final request
     request = TestingFarmRequestV1

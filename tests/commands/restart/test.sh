@@ -58,3 +58,11 @@ egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/on
 testinfo "pool option accepted"
 testing-farm restart --pool some-pool https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# pipeline type, just test it is accepted
+testinfo "test pipeline type"
+testing-farm restart --pipeline-type tmt-multihost https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+testing-farm restart --pipeline-type invalid https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output

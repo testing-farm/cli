@@ -77,5 +77,10 @@ testinfo "test artifacts"
 testing-farm reserve $ssh_key_option --dry-run --fedora-koji-build 123 --fedora-copr-build some-project:fedora-38 --redhat-brew-build 456 --repository baseurl --repository-file https://example.com.repo | tee output
 tail -n+4 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
 
+# post install script
+testinfo "test post install script"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --post-install-script="some-script" | tee output
+tail -n+4 output | tr -d '\n' | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -14,7 +14,7 @@ provision:
 adjust:
   prepare:
     how: shell
-    script: apk add jq
+    script: apk add jq netcat-openbsd
   when: distro = alpine
 
 execute:

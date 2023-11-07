@@ -102,6 +102,7 @@ def watch(
         state = request["state"]
 
         if state == current_state:
+            time.sleep(1)
             continue
 
         current_state = state
@@ -820,6 +821,7 @@ def run(
             state = request["state"]
 
             if state == current_state:
+                time.sleep(1)
                 continue
 
             current_state = state
@@ -1069,6 +1071,7 @@ def reserve(
             state = request["state"]
 
             if state == current_state:
+                time.sleep(1)
                 continue
 
             current_state = state
@@ -1123,7 +1126,6 @@ def reserve(
             if search and 'execute task #1' in pipeline_log:
                 current_state = "ready"
                 guest = search.group(1)
-                continue
 
             time.sleep(1)
 

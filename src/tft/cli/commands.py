@@ -941,6 +941,9 @@ def reserve(
     dry_run: bool = typer.Option(
         False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL
     ),
+    post_install_script: Optional[str] = typer.Option(
+        None, help="Post-install script to run right after the guest boots for the first time."
+    ),
 ):
     """
     Reserve a system in Testing Farm.
@@ -965,6 +968,13 @@ def reserve(
     environment["pool"] = pool
     environment["artifacts"] = []
 
+    if post_install_script:
+        if "settings" not in environment:
+            environment["settings"] = {}
+
+        if 'provisioning' not in environment["settings"]:
+            environment["settings"]["provisioning"] = {}
+
     if compose:
         environment["os"] = {"compose": compose}
 
@@ -988,6 +998,9 @@ def reserve(
 
     if repository_file:
         environment["artifacts"].extend(artifacts("repository-file", repository_file))
+
+    if post_install_script:
+        environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
     typer.echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
     environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}

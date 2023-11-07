@@ -485,7 +485,7 @@ def request(
 
 
 def restart(
-    request_id: str = typer.Argument(..., help="Testing Farm request ID or an string containing it."),
+    request_id: str = typer.Argument(..., help="Testing Farm request ID or a string containing it."),
     api_url: str = typer.Argument(
         settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
     ),
@@ -1140,3 +1140,67 @@ def update():
     """
     # NOTE: This command is handled by the shell wrapper, see `container/testing-farm` file
     pass
+
+
+def cancel(
+    request_id: str = typer.Argument(
+        ..., help="Testing Farm request to cancel. Specified by a request ID or a string containing it."
+    ),
+    api_url: str = typer.Argument(
+        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
+    ),
+    api_token: str = typer.Argument(
+        settings.API_TOKEN,
+        envvar="TESTING_FARM_API_TOKEN",
+        show_default=False,
+        metavar='',
+        rich_help_panel='Environment variables',
+    ),
+):
+    """
+    Cancel a Testing Farm request.
+    """
+
+    # UUID pattern
+    uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
+
+    # Find the UUID in the string
+    uuid_match = uuid_pattern.search(request_id)
+
+    if not uuid_match:
+        exit_error(f"Could not find a valid Testing Farm request id in '{request_id}'.")
+        return
+
+    if not api_token:
+        exit_error("No API token found in the environment, please export 'TESTING_FARM_API_TOKEN' variable.")
+        return
+
+    # Extract the UUID from the match object
+    _request_id = uuid_match.group()
+
+    # Construct URL to the internal API
+    request_url = urllib.parse.urljoin(str(api_url), f"v0.1/requests/{_request_id}")
+
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    # Get the request details
+    response = session.delete(request_url, json={"api_key": api_token})
+
+    if response.status_code == 401:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 404:
+        exit_error("Request was not found. Verify the request ID is correct.")
+
+    if response.status_code == 204:
+        exit_error("Request was already canceled.")
+
+    if response.status_code == 409:
+        exit_error("Requeted cannot be canceled, it is already finished.")
+
+    if response.status_code != 200:
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    typer.echo(f"✅ Request {yellow('cancellation requested')}. It will be canceled soon.")

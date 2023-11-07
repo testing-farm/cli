@@ -10,6 +10,7 @@ from tft.cli.config import settings
 
 app = typer.Typer()
 
+app.command()(commands.cancel)
 app.command()(commands.request)
 app.command()(commands.restart)
 app.command()(commands.reserve)

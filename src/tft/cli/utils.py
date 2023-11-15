@@ -10,14 +10,17 @@ from typing import Any, Dict, List, Optional, Union
 import requests
 import requests.adapters
 import typer
+from rich.console import Console
 from urllib3 import Retry
 
 from tft.cli.config import settings
 
+console = Console(soft_wrap=True)
+
 
 def exit_error(error: str):
     """Exit with given error message"""
-    typer.secho(f"⛔ {error}", fg=typer.colors.RED)
+    console.print(f"⛔ {error}", style="red")
     raise typer.Exit(code=255)
 
 
@@ -35,16 +38,6 @@ def cmd_output_or_exit(command: str, error: str) -> str:
 def artifacts(type: str, ids: List[str]) -> List[Dict[str, str]]:
     """Return artifacts List for given artifact type"""
     return [{"type": type, "id": id} for id in ids]
-
-
-def blue(message: str) -> str:
-    """Colorize text to bright blue color"""
-    return typer.style(f"{message}", fg=typer.colors.BRIGHT_BLUE)
-
-
-def yellow(message: str) -> str:
-    """Colorize text to bright yellow color"""
-    return typer.style(f"{message}", fg=typer.colors.BRIGHT_YELLOW)
 
 
 def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:

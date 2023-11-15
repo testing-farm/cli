@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import textwrap
 import time
 import urllib.parse
 from enum import Enum
@@ -16,14 +17,13 @@ import pkg_resources
 import requests
 import typer
 from rich import print
-from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from tft.cli.config import settings
 from tft.cli.utils import (
     artifacts,
-    blue,
     cmd_output_or_exit,
+    console,
     exit_error,
     hw_constraints,
     install_http_retries,
@@ -31,7 +31,6 @@ from tft.cli.utils import (
     options_to_dict,
     read_glob_paths,
     uuid_valid,
-    yellow,
 )
 
 cli_version: str = pkg_resources.get_distribution("tft-cli").version
@@ -73,10 +72,10 @@ def watch(
     get_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{id}")
     current_state: str = ""
 
-    typer.secho(f"🔎 api {blue(get_url)}")
+    console.print(f"🔎 api [blue]{get_url}[/blue]")
 
     if not no_wait:
-        typer.secho("💡 waiting for request to finish, use ctrl+c to skip", fg=typer.colors.BRIGHT_YELLOW)
+        console.print("💡 waiting for request to finish, use ctrl+c to skip", style="bright_yellow")
 
     artifacts_shown = False
 
@@ -89,7 +88,7 @@ def watch(
             response = session.get(get_url)
 
         except requests.exceptions.ConnectionError as exc:
-            typer.secho("📛 connection to API failed", fg=typer.colors.RED)
+            console.print("📛 connection to API failed", style="red")
             raise typer.Exit(code=2) from exc
 
         if response.status_code == 404:
@@ -109,33 +108,33 @@ def watch(
         current_state = state
 
         if state == "new":
-            typer.secho(f"👶 request is {blue('waiting to be queued')}")
+            console.print("👶 request is [blue]waiting to be queued[/blue]")
 
         elif state == "queued":
-            typer.secho(f"👷 request is {blue('queued')}")
+            console.print("👷 request is [blue]queued[/blue]")
 
         elif state == "running":
-            typer.secho(f"🚀 request is {blue('running')}")
-            typer.secho(f"🚢 artifacts {blue(request['run']['artifacts'])}")
+            console.print("🚀 request is [blue]running[/blue]")
+            console.print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
             artifacts_shown = True
 
         elif state == "complete":
             if not artifacts_shown:
-                typer.secho(f"🚢 artifacts {blue(request['run']['artifacts'])}")
+                console.print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
 
             overall = request["result"]["overall"]
             if overall in ["passed", "skipped"]:
-                typer.secho("✅ tests passed", fg=typer.colors.GREEN)
+                console.print("✅ tests passed", style="green")
                 raise typer.Exit()
 
             if overall in ["failed", "error", "unknown"]:
-                typer.secho(f"❌ tests {overall}", fg=typer.colors.RED)
+                console.print(f"❌ tests {overall}", style="red")
                 if overall == "error":
-                    typer.secho(f"{request['result']['summary']}", fg=typer.colors.RED)
+                    console.print(f"{request['result']['summary']}", style="red")
                 raise typer.Exit(code=1)
 
         elif state == "error":
-            typer.secho(f"📛 pipeline error\n{request['result']['summary']}", fg=typer.colors.RED)
+            console.print(f"📛 pipeline error\n{request['result']['summary']}", style="red")
             raise typer.Exit(code=2)
 
         if no_wait:
@@ -146,7 +145,7 @@ def watch(
 
 def version():
     """Print CLI version"""
-    typer.echo(f"{cli_version}")
+    console.print(f"{cli_version}")
 
 
 def request(
@@ -342,11 +341,11 @@ def request(
     if test_type == "sti" and compose == "container":
         exit_error("container based testing is not available for 'sti' test type")
 
-    typer.echo(f"📦 repository {blue(git_url)} ref {blue(git_ref)} test-type {blue(test_type)}")
+    console.print(f"📦 repository [blue]{git_url}[/blue] ref [blue]{git_ref}[/blue] test-type [blue]{test_type}[/blue]")
 
-    pool_info = f"via pool {blue(pool)}" if pool else ""
+    pool_info = f"via pool [blue]{pool}[/blue]" if pool else ""
     for arch in arches:
-        typer.echo(f"💻 {blue(compose or 'container image in plan')} on {blue(arch)} {pool_info}")
+        console.print(f"💻 [blue]{compose or 'container image in plan'}[/blue] on [blue]{arch}[/blue] {pool_info}")
 
     # test details
     test = TestTMT if test_type == "fmf" else TestSTI
@@ -462,7 +461,7 @@ def request(
 
     # dry run
     if dry_run:
-        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+        console.print("🔍 Dry run, showing POST json only", style="bright_yellow")
         print(json.dumps(request, indent=4, separators=(',', ': ')))
         raise typer.Exit()
 
@@ -616,25 +615,25 @@ def restart(
     merge_sha_info = ""
     if git_merge_sha:
         test["merge_sha"] = git_merge_sha
-        merge_sha_info = f"merge_sha {blue(git_merge_sha)}"
+        merge_sha_info = f"merge_sha [blue]{git_merge_sha}[/blue]"
 
-    typer.echo(f"📦 repository {blue(test['url'])} ref {blue(test['ref'])} {merge_sha_info}")
+    console.print(f"📦 repository [blue]{test['url']}[/blue] ref [blue]{test['ref']}[/blue] {merge_sha_info}")
 
     # Set compose
     if compose:
-        typer.echo(f"💻 forcing compose {blue(compose)}")
+        console.print(f"💻 forcing compose [blue]{compose}[/blue]")
         for environment in request['environments']:
             if environment.get("os") is None:
                 environment["os"] = {}
             environment["os"]["compose"] = compose
 
     if hardware:
-        typer.echo(f"💻 forcing hardware {blue(' '.join(hardware))}")
+        console.print(f"💻 forcing hardware [blue]{' '.join(hardware)}[/blue]")
         for environment in request['environments']:
             environment["hardware"] = hw_constraints(hardware)
 
     if pool:
-        typer.echo(f"💻 forcing pool {blue(pool)}")
+        console.print(f"💻 forcing pool [blue]{pool}[/blue]")
         for environment in request['environments']:
             environment["pool"] = pool
 
@@ -652,7 +651,7 @@ def restart(
 
     # worker image
     if worker_image:
-        typer.echo(f"👷 forcing worker image {blue(worker_image)}")
+        console.print(f"👷 forcing worker image [blue]{worker_image}[/blue]")
         request["settings"] = request["settings"] if request.get("settings") else {}
         request["settings"]["worker"] = {"image": worker_image}
         # it is required to have also pipeline key set, otherwise API will fail
@@ -670,7 +669,7 @@ def restart(
 
     # dry run
     if dry_run:
-        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+        console.print("🔍 Dry run, showing POST json only", style="bright_yellow")
         print(json.dumps(request, indent=4, separators=(',', ': ')))
         raise typer.Exit()
 
@@ -774,7 +773,7 @@ def run(
 
     # dry run
     if dry_run or verbose:
-        typer.secho(blue("🔍 showing POST json"))
+        console.print("[blue]🔍 showing POST json[/blue]")
         print(json.dumps(request, indent=4, separators=(',', ': ')))
         if dry_run:
             raise typer.Exit()
@@ -795,7 +794,7 @@ def run(
     get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
 
     if verbose:
-        typer.secho(f"🔎 api {blue(get_url)}")
+        console.print(f"🔎 api [blue]{get_url}[/blue]")
 
     # wait for the sanity test to finish
     with Progress(
@@ -839,14 +838,14 @@ def run(
         artifacts_url = response.json()['run']['artifacts']
 
         if verbose:
-            typer.secho(f"\r🚢 artifacts {blue(artifacts_url)}")
+            console.print(f"\r🚢 artifacts [blue]{artifacts_url}[/blue]")
 
         try:
             search = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts_url}/results.xml").text)
 
         except requests.exceptions.ConnectionError:
-            typer.secho(f"\r🚫 {yellow('artifacts unreachable, are you on VPN?')}")
-            typer.secho(f"\r🚢 artifacts {blue(artifacts_url)}")
+            console.print("\r🚫 [yellow]artifacts unreachable, are you on VPN?[/yellow]")
+            console.print(f"\r🚢 artifacts [blue]{artifacts_url}[/blue]")
             return
 
     if not search:
@@ -857,12 +856,10 @@ def run(
     output = f"{workdir}/testing-farm/sanity/execute/data/guest/default-0/testing-farm/script-1/output.txt"
 
     if verbose:
-        typer.secho(f"\r👷 workdir {blue(workdir)}")
-        typer.secho(f"\r📤 output {blue(output)}")
+        console.print(f"\r👷 workdir [blue]{workdir}[/blue]")
+        console.print(f"\r📤 output [blue]{output}[/blue]")
 
     response = session.get(output)
-
-    console = Console()
     console.print(response.text, end="")
 
 
@@ -960,14 +957,14 @@ def reserve(
 
     def _echo(message: str) -> None:
         if not print_only_request_id:
-            typer.echo(message)
+            console.print(message)
 
     # check for token
     if not settings.API_TOKEN:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
 
-    pool_info = f"via pool {blue(pool)}" if pool else ""
-    _echo(f"💻 {blue(compose)} on {blue(arch)} {pool_info}")
+    pool_info = f"via pool [blue]{pool}[/blue]" if pool else ""
+    console.print(f"💻 [blue]{compose}[/blue] on [blue]{arch}[/blue] {pool_info}")
 
     # test details
     test = TestTMT
@@ -1015,8 +1012,7 @@ def reserve(
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
-    _echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
-
+    console.print(f"🕗 Reserved for [blue]{str(reservation_duration)}[/blue] minutes")
     environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}
 
     authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
@@ -1047,9 +1043,9 @@ def reserve(
     # dry run
     if dry_run:
         if print_only_request_id:
-            typer.secho("🔍 Dry run, print-only-request-id is set. Nothing will be shown", fg=typer.colors.BRIGHT_YELLOW)
+            console.print("🔍 Dry run, print-only-request-id is set. Nothing will be shown", style="bright_yellow")
         else:
-            typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+            console.print("🔍 Dry run, showing POST json only", style="bright_yellow")
             print(json.dumps(request, indent=4, separators=(',', ': ')))
         raise typer.Exit()
 
@@ -1072,9 +1068,9 @@ def reserve(
     get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
 
     if not print_only_request_id:
-        typer.secho(f"🔎 {blue(get_url)}")
+        console.print(f"🔎 [blue]{get_url}[/blue]")
     else:
-        typer.secho(id)
+        console.print(id)
 
     # IP address or hostname of the guest, extracted from pipeline.log
     guest: str = ""
@@ -1116,13 +1112,13 @@ def reserve(
                 exit_error("Reservation failed, check API request or contact Testing Farm")
 
             if not print_only_request_id and task_id:
-                progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+                progress.update(task_id, description="Reservation job is [yellow]current_state[/yellow]")
 
             time.sleep(1)
 
         while current_state != "ready":
             if not print_only_request_id and task_id:
-                progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+                progress.update(task_id, description="Reservation job is [yellow]current_state[/yellow]")
 
             # get the command output
             artifacts_url = response.json()['run']['artifacts']
@@ -1135,21 +1131,25 @@ def reserve(
 
             except requests.exceptions.ConnectionError:
                 exit_error(
-                    f"""
+                    textwrap.dedent(
+                        f"""
                     Failed to access Testing Farm artifacts.
                     If you use Red Hat Ranch please make sure you are conneted to the VPN.
                     Otherwise file an issue to {settings.ISSUE_TRACKER}.
-                """.rstrip()
+                """
+                    )
                 )
                 return
 
             if 'Result of testing: ERROR' in pipeline_log:
                 exit_error(
-                    f"""
+                    textwrap.dedent(
+                        f"""
                     Failed to run reservation task.
                     Check status page {settings.STATUS_PAGE} for outages.
                     File an issue to {settings.ISSUE_TRACKER} if needed.
-                """.rstrip()
+                """
+                    )
                 )
 
             if '[pre-artifact-installation]' in pipeline_log:
@@ -1167,7 +1167,7 @@ def reserve(
 
             time.sleep(1)
 
-    _echo(f"🌎 ssh root@{guest}")
+    console.print(f"🌎 ssh root@{guest}")
 
     if autoconnect:
         os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
@@ -1242,4 +1242,4 @@ def cancel(
     if response.status_code != 200:
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
-    typer.echo(f"✅ Request {yellow('cancellation requested')}. It will be canceled soon.")
+    console.print("✅ Request [yellow]cancellation requested[/yellow]. It will be canceled soon.")

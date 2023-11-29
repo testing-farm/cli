@@ -46,6 +46,7 @@ REQUEST_PANEL_STI = "STI Options"
 
 RESERVE_PANEL_GENERAL = "General Options"
 RESERVE_PANEL_ENVIRONMENT = "Environment Options"
+RESERVE_PANEL_OUTPUT = "Output Options"
 
 RUN_REPO = "https://gitlab.com/testing-farm/tests"
 RUN_PLAN = "/testing-farm/sanity"
@@ -944,17 +945,26 @@ def reserve(
     post_install_script: Optional[str] = typer.Option(
         None, help="Post-install script to run right after the guest boots for the first time."
     ),
+    print_only_request_id: bool = typer.Option(
+        False,
+        help="Output only the request ID.",
+        rich_help_panel=RESERVE_PANEL_OUTPUT,
+    ),
 ):
     """
     Reserve a system in Testing Farm.
     """
+
+    def _echo(message: str) -> None:
+        if not print_only_request_id:
+            typer.echo(message)
 
     # check for token
     if not settings.API_TOKEN:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
 
     pool_info = f"via pool {blue(pool)}" if pool else ""
-    typer.echo(f"💻 {blue(compose)} on {blue(arch)} {pool_info}")
+    _echo(f"💻 {blue(compose)} on {blue(arch)} {pool_info}")
 
     # test details
     test = TestTMT
@@ -1002,7 +1012,8 @@ def reserve(
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
-    typer.echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
+    _echo(f"🕗 Reserved for {blue(str(reservation_duration))} minutes")
+
     environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}
 
     authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
@@ -1032,8 +1043,11 @@ def reserve(
 
     # dry run
     if dry_run:
-        typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
-        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        if print_only_request_id:
+            typer.secho("🔍 Dry run, print-only-request-id is set. Nothing will be shown", fg=typer.colors.BRIGHT_YELLOW)
+        else:
+            typer.secho("🔍 Dry run, showing POST json only", fg=typer.colors.BRIGHT_YELLOW)
+            print(json.dumps(request, indent=4, separators=(',', ': ')))
         raise typer.Exit()
 
     # handle errors
@@ -1054,7 +1068,10 @@ def reserve(
     id = response.json()['id']
     get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
 
-    typer.secho(f"🔎 {blue(get_url)}")
+    if not print_only_request_id:
+        typer.secho(f"🔎 {blue(get_url)}")
+    else:
+        typer.secho(id)
 
     # IP address or hostname of the guest, extracted from pipeline.log
     guest: str = ""
@@ -1065,7 +1082,10 @@ def reserve(
         TextColumn("[progress.description]{task.description}"),
         transient=True,
     ) as progress:
-        task_id = progress.add_task(description="Creating reservation", total=None)
+        task_id = None
+
+        if not print_only_request_id:
+            task_id = progress.add_task(description="Creating reservation", total=None)
 
         current_state: str = ""
 
@@ -1092,12 +1112,14 @@ def reserve(
             if state in ["complete", "error"]:
                 exit_error("Reservation failed, check API request or contact Testing Farm")
 
-            progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+            if not print_only_request_id and task_id:
+                progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
 
             time.sleep(1)
 
         while current_state != "ready":
-            progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
+            if not print_only_request_id and task_id:
+                progress.update(task_id, description=f"Reservation job is {yellow(current_state)}")
 
             # get the command output
             artifacts_url = response.json()['run']['artifacts']
@@ -1142,7 +1164,7 @@ def reserve(
 
             time.sleep(1)
 
-    typer.secho(f"🌎 ssh root@{guest}")
+    _echo(f"🌎 ssh root@{guest}")
 
     os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
 

@@ -950,6 +950,9 @@ def reserve(
         help="Output only the request ID.",
         rich_help_panel=RESERVE_PANEL_OUTPUT,
     ),
+    autoconnect: bool = typer.Option(
+        True, help="Automatically connect to the guest via SSH.", rich_help_panel=RESERVE_PANEL_GENERAL
+    ),
 ):
     """
     Reserve a system in Testing Farm.
@@ -1166,7 +1169,8 @@ def reserve(
 
     _echo(f"🌎 ssh root@{guest}")
 
-    os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
+    if autoconnect:
+        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
 
 
 def update():

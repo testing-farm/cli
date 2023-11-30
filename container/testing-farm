@@ -40,7 +40,12 @@ if [ "$1" == "reserve" ]; then
 
     # To share ssh agent, we need disable SELinux confinement
     # https://www.redhat.com/sysadmin/privileged-flag-container-engines
-    MOUNT_SSH="-v $HOME/.ssh:/root/.ssh:Z -v $SSH_AUTH_SOCK:$SSH_AUTH_SOCK:Z -e SSH_AUTH_SOCK=$SSH_AUTH_SOCK --security-opt label=disable"
+    MOUNT_SSH="-v $SSH_AUTH_SOCK:$SSH_AUTH_SOCK:Z -e SSH_AUTH_SOCK=$SSH_AUTH_SOCK --security-opt label=disable"
+
+    # pubkeys will be appended to authorized_keys on VM
+    for k in $HOME/.ssh/*.pub;do
+        MOUNT_SSH+=" -v $k:/root/.ssh/$(basename $k):ro,Z"
+    done
 fi
 
 # run the tool

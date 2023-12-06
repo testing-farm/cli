@@ -1038,6 +1038,9 @@ def reserve(
     # in case the reservation duration is more than the pipeline timeout, adjust also the pipeline timeout
     if reservation_duration > DEFAULT_PIPELINE_TIMEOUT:
         request["settings"] = {"pipeline": {"timeout": reservation_duration}}
+        console.print(f"⏳ Maximum reservation time is {reservation_duration} minutes")
+    else:
+        console.print(f"⏳ Maximum reservation time is {DEFAULT_PIPELINE_TIMEOUT} minutes")
 
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")

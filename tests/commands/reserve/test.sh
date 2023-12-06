@@ -87,5 +87,11 @@ testinfo "test post install script"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --print-only-request-id | tee output
 egrep "🔍 Dry run, print-only-request-id is set. Nothing will be shown" output
 
+# test duration and timeout
+testinfo "test post install script"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --duration 3600 | tee output
+tail -n+4 output | tr -d '\n' | jq -r '.environments[].variables.TF_RESERVATION_DURATION' | egrep '^3600$'
+tail -n+4 output | tr -d '\n' | jq -r '.settings.pipeline.timeout' | egrep '^3600$'
+
 # remove temporary directory
 rm -rf $TMPDIR

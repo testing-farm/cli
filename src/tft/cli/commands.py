@@ -54,6 +54,8 @@ RESERVE_PLAN = os.getenv("TESTING_FARM_RESERVE_PLAN", "/testing-farm/reserve")
 RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-farm/tests")
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 
+DEFAULT_PIPELINE_TIMEOUT = 60 * 12
+
 
 class PipelineType(str, Enum):
     tmt_multihost = "tmt-multihost"
@@ -160,8 +162,8 @@ def request(
         rich_help_panel='Environment variables',
     ),
     timeout: Optional[int] = typer.Option(
-        60 * 12,
-        help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated. Testing Farm internal default is 12h.",  # noqa
+        DEFAULT_PIPELINE_TIMEOUT,
+        help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.",
     ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
     tmt_plan_regex: Optional[str] = typer.Option(
@@ -1032,6 +1034,10 @@ def reserve(
     request["test"]["fmf"] = test
 
     request["environments"] = [environment]
+
+    # in case the reservation duration is more than the pipeline timeout, adjust also the pipeline timeout
+    if reservation_duration > DEFAULT_PIPELINE_TIMEOUT:
+        request["settings"] = {"pipeline": {"timeout": reservation_duration}}
 
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")

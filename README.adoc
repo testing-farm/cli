@@ -82,6 +82,15 @@ To watch an existing request for completion or get its completion status, use th
 testing-farm watch --id <REQUEST_ID>
 ....
 
+=== Disable colors
+
+The colors can be disabled by setting the `NO_COLOR` environment variable.
+See https://no-color.org/ for details.
+
+```
+NO_COLOR=1 testing-farm version
+```
+
 == Development
 
 === Install via Poetry

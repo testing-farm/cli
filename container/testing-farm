@@ -3,6 +3,11 @@
 # default image to run
 IMAGE=${IMAGE:-quay.io/testing-farm/cli:latest}
 
+# set no colors if NO_COLOR variable set
+if [ -n "$NO_COLOR" ]; then
+    SET_NO_COLOR="-e NO_COLOR=1"
+fi
+
 # check for podman
 CONTAINER_RUNTIME=$(command -v podman || command -v docker)
 if [ -z "$CONTAINER_RUNTIME" ]; then
@@ -49,4 +54,4 @@ if [ "$1" == "reserve" ]; then
 fi
 
 # run the tool
-$CONTAINER_RUNTIME run --network=host -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"
+$CONTAINER_RUNTIME run --network=host $SET_NO_COLOR -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"

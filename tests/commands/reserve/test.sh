@@ -42,6 +42,7 @@ testinfo "defaults + invalid token"
 testing-farm reserve $ssh_key_option | tee output
 egrep "^💻 Fedora-Rawhide on x86_64" output
 egrep "^🕗 Reserved for 30 minutes$" output
+egrep "^⏳ Maximum reservation time is 720 minutes$" output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 
 # test compose, pool, arch
@@ -58,34 +59,41 @@ egrep "⛔ Options for environment kickstart are invalid, must be defined as \`k
 testinfo "test dry run"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora | tee output
 egrep "🔍 Dry run, showing POST json only" output
-tail -n+4 output | tr -d '\n' | jq -r .environments[].os.compose | grep Fedora
+tail -n+5 output | tr -d '\n' | jq -r .environments[].os.compose | grep Fedora
 
 # hardware
 testinfo "test hardware"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --hardware memory=">=4GB" --hardware virtualization.is-virtualized=false | tee output
-tail -n+4 output | tr -d '\n' | jq -r .environments[].hardware.memory | egrep '^>=4GB$'
-tail -n+4 output | tr -d '\n' | jq -r '.environments[].hardware.virtualization."is-virtualized"' | egrep '^false$'
+tail -n+5 output | tr -d '\n' | jq -r .environments[].hardware.memory | egrep '^>=4GB$'
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].hardware.virtualization."is-virtualized"' | egrep '^false$'
 
 # test kickstart
 testinfo "test kickstart"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart post-install="%post\n ls\n %end"  | tee output
-tail -n+4 output | tr -d '\n' | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
-tail -n+4 output | tr -d '\n' | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
+tail -n+5 output | tr -d '\n' | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
 
 # test artifacts
 testinfo "test artifacts"
 testing-farm reserve $ssh_key_option --dry-run --fedora-koji-build 123 --fedora-copr-build some-project:fedora-38 --redhat-brew-build 456 --repository baseurl --repository-file https://example.com.repo | tee output
-tail -n+4 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
+tail -n+5 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
 
 # post install script
 testinfo "test post install script"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --post-install-script="some-script" | tee output
-tail -n+4 output | tr -d '\n' | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
+tail -n+5 output | tr -d '\n' | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
 
 # test print-only-request-id
 testinfo "test post install script"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --print-only-request-id | tee output
 egrep "🔍 Dry run, print-only-request-id is set. Nothing will be shown" output
+
+# test duration > timeout
+testinfo "test reservation duration > pipeline timeout"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --duration 3600 | tee output
+egrep "⏳ Maximum reservation time is 3600 minutes" output
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].variables.TF_RESERVATION_DURATION' | egrep '^3600$'
+tail -n+5 output | tr -d '\n' | jq -r '.settings.pipeline.timeout' | egrep '^3600$'
 
 # remove temporary directory
 rm -rf $TMPDIR

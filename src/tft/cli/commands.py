@@ -276,6 +276,15 @@ def request(
     post_install_script: Optional[str] = typer.Option(
         None, help="Post-install script to run right after the guest boots for the first time."
     ),
+    user_webpage: Optional[str] = typer.Option(
+        None, help="URL to the user's webpage. The link will be shown in the results viewer."
+    ),
+    user_webpage_name: Optional[str] = typer.Option(
+        None, help="Name of the user's webpage. It will be shown in the results viewer."
+    ),
+    user_webpage_icon: Optional[str] = typer.Option(
+        None, help="URL of the icon of the user's webpage. It will be shown in the results viewer."
+    ),
 ):
     """
     Request testing from Testing Farm.
@@ -453,6 +462,13 @@ def request(
     # worker image
     if worker_image:
         request["settings"]["worker"] = {"image": worker_image}
+
+    if not user_webpage and (user_webpage_name or user_webpage_icon):
+        exit_error("The user-webpage-name and user-webpage-icon can be used only with user-webpage option")
+
+    request["user"] = {}
+    if user_webpage:
+        request["user"]["webpage"] = {"url": user_webpage, "icon": user_webpage_icon, "name": user_webpage_name}
 
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")

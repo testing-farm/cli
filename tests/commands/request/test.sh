@@ -181,5 +181,12 @@ tail -n+4 output | jq -r .settings.pipeline.type | egrep 'tmt-multihost'
 testing-farm request --pipeline-type invalid --compose Fedora --dry-run 2>&1 | tee output
 egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
 
+# user webpage
+testinfo "test user webpage"
+testing-farm request --dry-run --compose Fedora --user-webpage "https://example.com" --user-webpage-icon "https://example.com/icon.png" --user-webpage-name "Example CI" | tee output
+tail -n+4 output | jq -r .user.webpage.url | egrep '^https://example\.com$'
+tail -n+4 output | jq -r .user.webpage.icon | egrep '^https://example\.com/icon\.png$'
+tail -n+4 output | jq -r .user.webpage.name | egrep '^Example CI$'
+
 # remove temporary directory
 rm -rf $TMPDIR

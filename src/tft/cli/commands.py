@@ -469,7 +469,7 @@ def request(
 
     # handle errors
     response = session.post(post_url, json=request)
-    if response.status_code == 404:
+    if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
@@ -576,7 +576,7 @@ def restart(
     # Get the request details
     response = session.get(get_url)
 
-    if response.status_code == 404:
+    if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code != 200:
@@ -680,7 +680,7 @@ def restart(
 
     # handle errors
     response = session.post(post_url, json=request)
-    if response.status_code == 404:
+    if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
@@ -782,7 +782,7 @@ def run(
 
     # handle errors
     response = session.post(post_url, json=request)
-    if response.status_code == 404:
+    if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:
@@ -1060,7 +1060,7 @@ def reserve(
 
     # handle errors
     response = session.post(post_url, json=request)
-    if response.status_code == 404:
+    if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
     if response.status_code == 400:

@@ -181,6 +181,12 @@ def request(
     tmt_test_filter_regex: Optional[str] = typer.Option(
         None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
     ),
+    tmt_path: str = typer.Option(
+        '.',
+        '--path',
+        help='Path to the metadata tree root. Relative to the git repository root specified by --git-url.',
+        rich_help_panel=REQUEST_PANEL_TMT,
+    ),
     sti_playbooks: Optional[List[str]] = typer.Option(
         None,
         "--playbook",
@@ -448,6 +454,7 @@ def request(
     request = TestingFarmRequestV1
     request["api_key"] = api_token
     if test_type == "fmf":
+        test["path"] = tmt_path
         request["test"]["fmf"] = test
     else:
         request["test"]["sti"] = test
@@ -555,6 +562,12 @@ def restart(
     ),
     tmt_test_filter_regex: Optional[str] = typer.Option(
         None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
+    ),
+    tmt_path: str = typer.Option(
+        '.',
+        '--path',
+        help='Path to the metadata tree root. Relative to the git repository root specified by --git-url.',
+        rich_help_panel=REQUEST_PANEL_TMT,
     ),
     worker_image: Optional[str] = typer.Option(
         None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
@@ -666,6 +679,9 @@ def restart(
         if test_type == "sti":
             exit_error("The '--plan-filter' option is compabitble only with 'tmt` tests.")
         request["test"][test_type]["plan_filter"] = tmt_plan_filter_regex
+
+    if test_type == "fmf":
+        request["test"][test_type]["path"] = tmt_path
 
     # worker image
     if worker_image:

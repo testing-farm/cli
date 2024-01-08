@@ -35,9 +35,22 @@ def cmd_output_or_exit(command: str, error: str) -> str:
     return output.rstrip().decode("utf-8")
 
 
-def artifacts(type: str, ids: List[str]) -> List[Dict[str, str]]:
+def artifacts(type: str, artifacts_raw: List[str]) -> List[Dict[str, str]]:
     """Return artifacts List for given artifact type"""
-    return [{"type": type, "id": id} for id in ids]
+    artifacts = []
+
+    for artifact in artifacts_raw:
+        if '=' in artifact:
+            artifact_dict = options_to_dict('artifact `{}`'.format(artifact), normalize_multistring_option([artifact]))
+        else:
+            artifact_dict = {'id': artifact}
+
+        if 'install' in artifact_dict:
+            artifact_dict['install'] = normalize_bool_option(artifact_dict['install'])  # pyre-ignore[6]
+
+        artifacts.append({'type': type, **artifact_dict})
+
+    return artifacts
 
 
 def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
@@ -152,6 +165,12 @@ def install_http_retries(
 
 def normalize_multistring_option(options: List[str], separator: str = ',') -> List[str]:
     return sum([[option.strip() for option in item.split(separator)] for item in options], [])
+
+
+def normalize_bool_option(option_value: Union[str, bool]) -> bool:
+    if str(option_value).strip().lower() in ('yes', 'true', '1', 'y', 'on'):
+        return True
+    return False
 
 
 def read_glob_paths(glob_paths: List[str]) -> str:

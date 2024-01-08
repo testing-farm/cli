@@ -75,8 +75,8 @@ tail -n+5 output | tr -d '\n' | jq -r '.environments[].kickstart."post-install"'
 
 # test artifacts
 testinfo "test artifacts"
-testing-farm reserve $ssh_key_option --dry-run --fedora-koji-build 123 --fedora-copr-build some-project:fedora-38 --redhat-brew-build 456 --repository baseurl --repository-file https://example.com.repo | tee output
-tail -n+5 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
+testing-farm reserve $ssh_key_option --dry-run --fedora-koji-build 123 --fedora-koji-build install=false,id=1234 --fedora-copr-build some-project:fedora-38 --fedora-copr-build id=some-project:fedora-38 --redhat-brew-build 456 --redhat-brew-build id=456,install=1 --repository baseurl --repository id=baseurl,install=0 --repository-file https://example.com.repo --repository-file id=https://example.com.repo | tee output
+tail -n+5 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"redhat-brew-build","id":"456","install":true\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-koji-build","install":false,"id":"1234"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository","id":"baseurl","install":false\},\{"type":"repository-file","id":"https://example.com.repo"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
 
 # post install script
 testinfo "test post install script"

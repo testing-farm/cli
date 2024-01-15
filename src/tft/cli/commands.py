@@ -253,18 +253,53 @@ def request(
     worker_image: Optional[str] = typer.Option(
         None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
     ),
-    redhat_brew_build: List[str] = typer.Option(None, help="Brew build task IDs to install on the test environment."),
-    fedora_koji_build: List[str] = typer.Option(None, help="Koji build task IDs to install on the test environment."),
+    fedora_koji_build: List[str] = typer.Option(
+        None,
+        metavar="[TEXT|key=value]",
+        help=(
+            "Koji build task to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
+            "`--fedora-koji-build id=build-id,install=false`."
+        ),
+    ),
     fedora_copr_build: List[str] = typer.Option(
         None,
-        help="Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`, e.g. 1784470:fedora-32-x86_64.",  # noqa
+        metavar="[TEXT|key=value]",
+        help=(
+            "Fedora Copr build to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--fedora-copr-build 1784470:fedora-32-x86_64`, "
+            "`--fedora-copr-build id=1784470:fedora-32-x86_64,install=false`. "
+            "The build id is specified as `build-id:chroot-name`."
+        ),
     ),
     repository: List[str] = typer.Option(
-        None, help="Repository base url to add to the test environment and install all packages from it."
+        None,
+        metavar="[TEXT|key=value]",
+        help=(
+            "Repository base url to add to the test environment and install all packages from it. Can be either a URL "
+            "of the build or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--repository url`, `--repository id=url,install=false`."
+        ),
     ),
     repository_file: List[str] = typer.Option(
         None,
-        help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+        metavar="[TEXT|key=value]",
+        help=(
+            "URL to a repository file which should be added to /etc/yum.repos.d. Can be either a URL to the file "
+            "or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--repository-file https://example.com/repository.repo`, "
+            "`--repository id=https://example.com/repository.repo,install=false`."
+        ),
+    ),
+    redhat_brew_build: List[str] = typer.Option(
+        None,
+        metavar="[TEXT|key=value]",
+        help=(
+            "Brew build tasks to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
+            "`--fedora-koji-build id=build-id,install=false`."
+        ),
     ),
     tags: Optional[List[str]] = typer.Option(
         None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
@@ -948,27 +983,56 @@ def reserve(
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     fedora_koji_build: List[str] = typer.Option(
-        None, help="Koji build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+        None,
+        metavar="[TEXT|key=value]",
+        help=(
+            "Koji build task to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
+            "`--fedora-koji-build id=build-id,install=false`."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     fedora_copr_build: List[str] = typer.Option(
         None,
+        metavar="[TEXT|key=value]",
         help=(
-            "Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`"
-            ", e.g. 1784470:fedora-32-x86_64."
+            "Fedora Copr build to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--fedora-copr-build 1784470:fedora-32-x86_64`, "
+            "`--fedora-copr-build id=1784470:fedora-32-x86_64,install=false`. "
+            "The build id is specified as `build-id:chroot-name`."
         ),
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     repository: List[str] = typer.Option(
         None,
-        help="Repository base url to add to the test environment and install all packages from it.",
+        metavar="[TEXT|key=value]",
+        help=(
+            "Repository base url to add to the test environment and install all packages from it. Can be either a URL "
+            "of the build or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--repository url`, `--repository id=url,install=false`."
+        ),
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     repository_file: List[str] = typer.Option(
         None,
-        help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+        metavar="[TEXT|key=value]",
+        help=(
+            "URL to a repository file which should be added to /etc/yum.repos.d. Can be either a URL to the file "
+            "or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
+            "`--repository-file https://example.com/repository.repo`, "
+            "`--repository id=https://example.com/repository.repo,install=false`."
+        ),
     ),
     redhat_brew_build: List[str] = typer.Option(
-        None, help="Brew build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+        None,
+        metavar="[TEXT|key=value]",
+        help=(
+            "Brew build tasks to install on the test environment. Can be either an ID of the build or comma-separated "
+            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
+            "`--fedora-koji-build id=build-id,install=false`."
+        ),
+        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     dry_run: bool = typer.Option(
         False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL

@@ -188,5 +188,10 @@ tail -n+4 output | jq -r .user.webpage.url | egrep '^https://example\.com$'
 tail -n+4 output | jq -r .user.webpage.icon | egrep '^https://example\.com/icon\.png$'
 tail -n+4 output | jq -r .user.webpage.name | egrep '^Example CI$'
 
+# test artifacts
+testinfo "test artifacts"
+testing-farm request --dry-run --fedora-koji-build 123 --fedora-koji-build install=false,id=1234 --fedora-copr-build some-project:fedora-38 --fedora-copr-build id=some-project:fedora-38 --redhat-brew-build 456 --redhat-brew-build id=456,install=1 --repository baseurl --repository id=baseurl,install=0 --repository-file https://example.com.repo --repository-file id=https://example.com.repo | tee output
+tail -n+4 output | tr -d '\n' | jq -r .environments[].artifacts | tr -d ' \n' | egrep '^\[\{"type":"redhat-brew-build","id":"456"\},\{"type":"redhat-brew-build","id":"456","install":true\},\{"type":"fedora-koji-build","id":"123"\},\{"type":"fedora-koji-build","install":false,"id":"1234"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"fedora-copr-build","id":"some-project:fedora-38"\},\{"type":"repository","id":"baseurl"\},\{"type":"repository","id":"baseurl","install":false\},\{"type":"repository-file","id":"https://example.com.repo"\},\{"type":"repository-file","id":"https://example.com.repo"\}\]$'
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -169,7 +169,7 @@ def request(
     tmt_plan_regex: Optional[str] = typer.Option(
         None,
         "--plan",
-        help="Regex for selecting plans, by default all plans are selected.",
+        help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
         rich_help_panel=REQUEST_PANEL_TMT,
     ),
     tmt_plan_filter_regex: Optional[str] = typer.Option(
@@ -586,7 +586,7 @@ def restart(
     tmt_plan_regex: Optional[str] = typer.Option(
         None,
         "--plan",
-        help="Regex for selecting plans, by default all plans are selected.",
+        help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
         rich_help_panel=REQUEST_PANEL_TMT,
     ),
     tmt_plan_filter_regex: Optional[str] = typer.Option(

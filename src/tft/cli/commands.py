@@ -61,6 +61,106 @@ class PipelineType(str, Enum):
     tmt_multihost = "tmt-multihost"
 
 
+# Arguments and options that are shared among multiple commands
+ARGUMENT_API_URL: str = typer.Argument(
+    settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
+)
+ARGUMENT_API_TOKEN: str = typer.Argument(
+    settings.API_TOKEN,
+    envvar="TESTING_FARM_API_TOKEN",
+    show_default=False,
+    metavar='',
+    rich_help_panel='Environment variables',
+)
+OPTION_TMT_PLAN_REGEX: Optional[str] = typer.Option(
+    None,
+    "--plan",
+    help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
+    rich_help_panel=REQUEST_PANEL_TMT,
+)
+OPTION_TMT_PLAN_FILTER_REGEX: Optional[str] = typer.Option(
+    None,
+    "--plan-filter",
+    help="Regex for filtering plans, by default only enabled plans are executed.",
+    rich_help_panel=REQUEST_PANEL_TMT,
+)
+OPTION_TMT_TEST_FILTER_REGEX: Optional[str] = typer.Option(
+    None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
+)
+OPTION_TMT_PATH: str = typer.Option(
+    '.',
+    '--path',
+    help='Path to the metadata tree root. Relative to the git repository root specified by --git-url.',
+    rich_help_panel=REQUEST_PANEL_TMT,
+)
+OPTION_PIPELINE_TYPE: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type.")
+OPTION_POST_INSTALL_SCRIPT: Optional[str] = typer.Option(
+    None, help="Post-install script to run right after the guest boots for the first time."
+)
+OPTION_KICKSTART: Optional[List[str]] = typer.Option(
+    None,
+    metavar="key=value",
+    help=(
+        "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
+        "For more information about the supported keys see "
+        "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
+    ),
+)
+OPTION_POOL: Optional[str] = typer.Option(
+    None,
+    help=(
+        "Force pool to provision. By default the most suited pool is used according to the hardware "
+        "requirements specified in tmt plans."
+    ),
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+)
+OPTION_REDHAT_BREW_BUILD: List[str] = typer.Option(
+    None, help="Brew build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+)
+OPTION_FEDORA_KOJI_BUILD: List[str] = typer.Option(
+    None, help="Koji build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+)
+OPTION_FEDORA_COPR_BUILD: List[str] = typer.Option(
+    None,
+    help=(
+        "Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`"
+        ", e.g. 1784470:fedora-32-x86_64."
+    ),
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+)
+OPTION_REPOSITORY: List[str] = typer.Option(
+    None,
+    help="Repository base url to add to the test environment and install all packages from it.",
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
+)
+OPTION_REPOSITORY_FILE: List[str] = typer.Option(
+    None,
+    help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+)
+OPTION_DRY_RUN: bool = typer.Option(
+    False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL
+)
+OPTION_VARIABLES: Optional[List[str]] = typer.Option(
+    None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
+)
+OPTION_SECRETS: Optional[List[str]] = typer.Option(
+    None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
+)
+OPTION_HARDWARE: List[str] = typer.Option(
+    None,
+    help=(
+        "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
+        "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
+        "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
+        "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
+        "for the hardware specification."
+    ),
+)
+OPTION_WORKER_IMAGE: Optional[str] = typer.Option(
+    None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
+)
+
+
 def watch(
     api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
     id: str = typer.Option(..., help="Request ID to watch"),
@@ -151,42 +251,17 @@ def version():
 
 
 def request(
-    api_url: str = typer.Argument(
-        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
-    ),
-    api_token: str = typer.Argument(
-        settings.API_TOKEN,
-        envvar="TESTING_FARM_API_TOKEN",
-        show_default=False,
-        metavar='',
-        rich_help_panel='Environment variables',
-    ),
+    api_url: str = ARGUMENT_API_URL,
+    api_token: str = ARGUMENT_API_TOKEN,
     timeout: Optional[int] = typer.Option(
         DEFAULT_PIPELINE_TIMEOUT,
         help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.",
     ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
-    tmt_plan_regex: Optional[str] = typer.Option(
-        None,
-        "--plan",
-        help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
-    tmt_plan_filter_regex: Optional[str] = typer.Option(
-        None,
-        "--plan-filter",
-        help="Regex for filtering plans, by default only enabled plans are executed.",
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
-    tmt_test_filter_regex: Optional[str] = typer.Option(
-        None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
-    ),
-    tmt_path: str = typer.Option(
-        '.',
-        '--path',
-        help='Path to the metadata tree root. Relative to the git repository root specified by --git-url.',
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
+    tmt_plan_regex: Optional[str] = OPTION_TMT_PLAN_REGEX,
+    tmt_plan_filter_regex: Optional[str] = OPTION_TMT_PLAN_FILTER_REGEX,
+    tmt_test_filter_regex: Optional[str] = OPTION_TMT_TEST_FILTER_REGEX,
+    tmt_path: str = OPTION_TMT_PATH,
     sti_playbooks: Optional[List[str]] = typer.Option(
         None,
         "--playbook",
@@ -217,28 +292,13 @@ def request(
             "for the hardware specification."
         ),
     ),
-    kickstart: Optional[List[str]] = typer.Option(
-        None,
-        metavar="key=value",
-        help=(
-            "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
-            "For more information about the supported keys see "
-            "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
-        ),
-    ),
-    pool: Optional[str] = typer.Option(
-        None,
-        help="Force pool to provision. By default the most suited pool is used according to the hardware requirements specified in tmt plans.",  # noqa
-    ),
+    kickstart: Optional[List[str]] = OPTION_KICKSTART,
+    pool: Optional[str] = OPTION_POOL,
     tmt_context: Optional[List[str]] = typer.Option(
         None, "-c", "--context", metavar="key=value", help="Context variables to pass to `tmt`."
     ),
-    variables: Optional[List[str]] = typer.Option(
-        None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
-    ),
-    secrets: Optional[List[str]] = typer.Option(
-        None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
-    ),
+    variables: Optional[List[str]] = OPTION_VARIABLES,
+    secrets: Optional[List[str]] = OPTION_SECRETS,
     tmt_environment: Optional[List[str]] = typer.Option(
         None,
         "-T",
@@ -250,57 +310,12 @@ def request(
         ),
     ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
-    worker_image: Optional[str] = typer.Option(
-        None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
-    ),
-    fedora_koji_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Koji build task to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
-            "`--fedora-koji-build id=build-id,install=false`."
-        ),
-    ),
-    fedora_copr_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Fedora Copr build to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--fedora-copr-build 1784470:fedora-32-x86_64`, "
-            "`--fedora-copr-build id=1784470:fedora-32-x86_64,install=false`. "
-            "The build id is specified as `build-id:chroot-name`."
-        ),
-    ),
-    repository: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Repository base url to add to the test environment and install all packages from it. Can be either a URL "
-            "of the build or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--repository url`, `--repository id=url,install=false`."
-        ),
-    ),
-    repository_file: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "URL to a repository file which should be added to /etc/yum.repos.d. Can be either a URL to the file "
-            "or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--repository-file https://example.com/repository.repo`, "
-            "`--repository id=https://example.com/repository.repo,install=false`."
-        ),
-    ),
-    redhat_brew_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Brew build tasks to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
-            "`--fedora-koji-build id=build-id,install=false`."
-        ),
-    ),
+    worker_image: Optional[str] = OPTION_WORKER_IMAGE,
+    redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
+    fedora_koji_build: List[str] = OPTION_FEDORA_KOJI_BUILD,
+    fedora_copr_build: List[str] = OPTION_FEDORA_COPR_BUILD,
+    repository: List[str] = OPTION_REPOSITORY,
+    repository_file: List[str] = OPTION_REPOSITORY_FILE,
     tags: Optional[List[str]] = typer.Option(
         None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
     ),
@@ -312,11 +327,9 @@ def request(
         None,
         help="How often (seconds) check that the guest \"is-alive\". Note that this is implemented only in Artemis service.",  # noqa
     ),
-    dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
-    pipeline_type: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type."),
-    post_install_script: Optional[str] = typer.Option(
-        None, help="Post-install script to run right after the guest boots for the first time."
-    ),
+    dry_run: bool = OPTION_DRY_RUN,
+    pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
+    post_install_script: Optional[str] = OPTION_POST_INSTALL_SCRIPT,
     user_webpage: Optional[str] = typer.Option(
         None, help="URL to the user's webpage. The link will be shown in the results viewer."
     ),
@@ -546,22 +559,14 @@ def request(
 
 def restart(
     request_id: str = typer.Argument(..., help="Testing Farm request ID or a string containing it."),
-    api_url: str = typer.Argument(
-        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
-    ),
+    api_url: str = ARGUMENT_API_URL,
     internal_api_url: str = typer.Argument(
         settings.INTERNAL_API_URL,
         envvar="TESTING_FARM_INTERNAL_API_URL",
         metavar='',
         rich_help_panel='Environment variables',
     ),
-    api_token: str = typer.Argument(
-        settings.API_TOKEN,
-        envvar="TESTING_FARM_API_TOKEN",
-        show_default=False,
-        metavar='',
-        rich_help_panel='Environment variables',
-    ),
+    api_token: str = ARGUMENT_API_TOKEN,
     compose: Optional[str] = typer.Option(
         None,
         help="Force compose used to provision test environment.",  # noqa
@@ -583,33 +588,14 @@ def restart(
             "for the hardware specification."
         ),
     ),
-    tmt_plan_regex: Optional[str] = typer.Option(
-        None,
-        "--plan",
-        help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
-    tmt_plan_filter_regex: Optional[str] = typer.Option(
-        None,
-        "--plan-filter",
-        help="Regex for filtering plans, by default only enabled plans are executed.",
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
-    tmt_test_filter_regex: Optional[str] = typer.Option(
-        None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
-    ),
-    tmt_path: str = typer.Option(
-        '.',
-        '--path',
-        help='Path to the metadata tree root. Relative to the git repository root specified by --git-url.',
-        rich_help_panel=REQUEST_PANEL_TMT,
-    ),
-    worker_image: Optional[str] = typer.Option(
-        None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
-    ),
+    tmt_plan_regex: Optional[str] = OPTION_TMT_PLAN_REGEX,
+    tmt_plan_filter_regex: Optional[str] = OPTION_TMT_PLAN_FILTER_REGEX,
+    tmt_test_filter_regex: Optional[str] = OPTION_TMT_TEST_FILTER_REGEX,
+    tmt_path: str = OPTION_TMT_PATH,
+    worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
-    dry_run: bool = typer.Option(False, help="Do not submit request, just print it"),
-    pipeline_type: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type."),
+    dry_run: bool = OPTION_DRY_RUN,
+    pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
 ):
     """
     Restart a Testing Farm request.
@@ -770,27 +756,11 @@ def run(
         None,
         help="Compose used to provision the target machine. If not set, script will be executed aginst `fedora:latest` container.",  # noqa
     ),
-    pool: Optional[str] = typer.Option(
-        None,
-        help="Force Testing Farm provisioning pool. By default the most suitable pool is used according to the hardware requirements.",  # noqa
-    ),
-    hardware: List[str] = typer.Option(
-        None,
-        help=(
-            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
-            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
-            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/plans.html#hardware "
-            "for the hardware specification."
-        ),
-    ),
-    variables: Optional[List[str]] = typer.Option(
-        None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
-    ),
-    secrets: Optional[List[str]] = typer.Option(
-        None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
-    ),
-    dry_run: bool = typer.Option(False, help="Do not run, just print request to Testing Farm"),
+    pool: Optional[str] = OPTION_POOL,
+    hardware: List[str] = OPTION_HARDWARE,
+    variables: Optional[List[str]] = OPTION_VARIABLES,
+    secrets: Optional[List[str]] = OPTION_SECRETS,
+    dry_run: bool = OPTION_DRY_RUN,
     verbose: bool = typer.Option(False, help="Be verbose."),
     command: List[str] = typer.Argument(..., help="Command to run. Use `--` to separate COMMAND from CLI options."),
 ):
@@ -953,93 +923,16 @@ def reserve(
         help="Compose used to provision system-under-test. By default Fedora-Rawhide.",  # noqa
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
-    hardware: List[str] = typer.Option(
-        None,
-        help=(
-            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
-            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
-            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
-            "for the hardware specification."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    kickstart: Optional[List[str]] = typer.Option(
-        None,
-        metavar="key=value",
-        help=(
-            "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
-            "For more information about the supported keys see "
-            "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    pool: Optional[str] = typer.Option(
-        None,
-        help=(
-            "Force pool to provision. By default the most suited pool is used according to the hardware "
-            "requirements specified in tmt plans."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    fedora_koji_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Koji build task to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
-            "`--fedora-koji-build id=build-id,install=false`."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    fedora_copr_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Fedora Copr build to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--fedora-copr-build 1784470:fedora-32-x86_64`, "
-            "`--fedora-copr-build id=1784470:fedora-32-x86_64,install=false`. "
-            "The build id is specified as `build-id:chroot-name`."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    repository: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Repository base url to add to the test environment and install all packages from it. Can be either a URL "
-            "of the build or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--repository url`, `--repository id=url,install=false`."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    repository_file: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "URL to a repository file which should be added to /etc/yum.repos.d. Can be either a URL to the file "
-            "or comma-separated key=value pairs to specify additional artifact options for the API, e.g. "
-            "`--repository-file https://example.com/repository.repo`, "
-            "`--repository id=https://example.com/repository.repo,install=false`."
-        ),
-    ),
-    redhat_brew_build: List[str] = typer.Option(
-        None,
-        metavar="[TEXT|key=value]",
-        help=(
-            "Brew build tasks to install on the test environment. Can be either an ID of the build or comma-separated "
-            "key=value pairs to specify additional artifact options for the API, e.g. `--fedora-koji-build build-id`, "
-            "`--fedora-koji-build id=build-id,install=false`."
-        ),
-        rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
-    ),
-    dry_run: bool = typer.Option(
-        False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL
-    ),
-    post_install_script: Optional[str] = typer.Option(
-        None, help="Post-install script to run right after the guest boots for the first time."
-    ),
+    hardware: List[str] = OPTION_HARDWARE,
+    kickstart: Optional[List[str]] = OPTION_KICKSTART,
+    pool: Optional[str] = OPTION_POOL,
+    fedora_koji_build: List[str] = OPTION_FEDORA_KOJI_BUILD,
+    fedora_copr_build: List[str] = OPTION_FEDORA_COPR_BUILD,
+    repository: List[str] = OPTION_REPOSITORY,
+    repository_file: List[str] = OPTION_REPOSITORY_FILE,
+    redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
+    dry_run: bool = OPTION_DRY_RUN,
+    post_install_script: Optional[str] = OPTION_POST_INSTALL_SCRIPT,
     print_only_request_id: bool = typer.Option(
         False,
         help="Output only the request ID.",
@@ -1290,16 +1183,8 @@ def cancel(
     request_id: str = typer.Argument(
         ..., help="Testing Farm request to cancel. Specified by a request ID or a string containing it."
     ),
-    api_url: str = typer.Argument(
-        settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
-    ),
-    api_token: str = typer.Argument(
-        settings.API_TOKEN,
-        envvar="TESTING_FARM_API_TOKEN",
-        show_default=False,
-        metavar='',
-        rich_help_panel='Environment variables',
-    ),
+    api_url: str = ARGUMENT_API_URL,
+    api_token: str = ARGUMENT_API_TOKEN,
 ):
     """
     Cancel a Testing Farm request.

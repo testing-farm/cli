@@ -72,20 +72,48 @@ ARGUMENT_API_TOKEN: str = typer.Argument(
     metavar='',
     rich_help_panel='Environment variables',
 )
-OPTION_TMT_PLAN_REGEX: Optional[str] = typer.Option(
+OPTION_TMT_PLAN_NAME: Optional[str] = typer.Option(
     None,
     "--plan",
-    help="Regex for selecting plans, by default all plans are selected. Same as `test.tmt.name` in the API.",
+    help=(
+        'Select plans to be executed. '
+        'Passed as `--name` option to the `tmt plan` command. '
+        'Can be a regular expression.'
+    ),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
-OPTION_TMT_PLAN_FILTER_REGEX: Optional[str] = typer.Option(
+OPTION_TMT_PLAN_FILTER: Optional[str] = typer.Option(
     None,
     "--plan-filter",
-    help="Regex for filtering plans, by default only enabled plans are executed.",
+    help=(
+        'Filter tmt plans. '
+        'Passed as `--filter` option to the `tmt plan` command. '
+        'By default, `enabled:true` filter is applied. '
+        'Plan filtering is similar to test filtering, '
+        'see https://tmt.readthedocs.io/en/stable/examples.html#filter-tests for more information.'
+    ),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
-OPTION_TMT_TEST_FILTER_REGEX: Optional[str] = typer.Option(
-    None, "--test-filter", help="Regex for filtering tests.", rich_help_panel=REQUEST_PANEL_TMT
+OPTION_TMT_TEST_NAME: Optional[str] = typer.Option(
+    None,
+    "--test",
+    help=(
+        'Select tests to be executed. '
+        'Passed as `--name` option to the `tmt test` command. '
+        'Can be a regular expression.'
+    ),
+    rich_help_panel=REQUEST_PANEL_TMT,
+)
+OPTION_TMT_TEST_FILTER: Optional[str] = typer.Option(
+    None,
+    "--test-filter",
+    help=(
+        'Filter tmt tests. '
+        'Passed as `--filter` option to the `tmt test` command. '
+        'It overrides any test filter defined in the plan. '
+        'See https://tmt.readthedocs.io/en/stable/examples.html#filter-tests for more information.'
+    ),
+    rich_help_panel=REQUEST_PANEL_TMT,
 )
 OPTION_TMT_PATH: str = typer.Option(
     '.',
@@ -258,9 +286,10 @@ def request(
         help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.",
     ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
-    tmt_plan_regex: Optional[str] = OPTION_TMT_PLAN_REGEX,
-    tmt_plan_filter_regex: Optional[str] = OPTION_TMT_PLAN_FILTER_REGEX,
-    tmt_test_filter_regex: Optional[str] = OPTION_TMT_TEST_FILTER_REGEX,
+    tmt_plan_name: Optional[str] = OPTION_TMT_PLAN_NAME,
+    tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
+    tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
+    tmt_test_filter: Optional[str] = OPTION_TMT_TEST_FILTER,
     tmt_path: str = OPTION_TMT_PATH,
     sti_playbooks: Optional[List[str]] = typer.Option(
         None,
@@ -420,14 +449,17 @@ def request(
     if git_merge_sha:
         test["merge_sha"] = git_merge_sha
 
-    if tmt_plan_regex:
-        test["name"] = tmt_plan_regex
+    if tmt_plan_name:
+        test["name"] = tmt_plan_name
 
-    if tmt_plan_filter_regex:
-        test["plan_filter"] = tmt_plan_filter_regex
+    if tmt_plan_filter:
+        test["plan_filter"] = tmt_plan_filter
 
-    if tmt_test_filter_regex:
-        test["test_filter"] = tmt_test_filter_regex
+    if tmt_test_name:
+        test["test_name"] = tmt_test_name
+
+    if tmt_test_filter:
+        test["test_filter"] = tmt_test_filter
 
     if sti_playbooks:
         test["playbooks"] = sti_playbooks
@@ -588,9 +620,10 @@ def restart(
             "for the hardware specification."
         ),
     ),
-    tmt_plan_regex: Optional[str] = OPTION_TMT_PLAN_REGEX,
-    tmt_plan_filter_regex: Optional[str] = OPTION_TMT_PLAN_FILTER_REGEX,
-    tmt_test_filter_regex: Optional[str] = OPTION_TMT_TEST_FILTER_REGEX,
+    tmt_plan_name: Optional[str] = OPTION_TMT_PLAN_NAME,
+    tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
+    tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
+    tmt_test_filter: Optional[str] = OPTION_TMT_TEST_FILTER,
     tmt_path: str = OPTION_TMT_PATH,
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
@@ -661,8 +694,11 @@ def restart(
     if git_ref:
         test["ref"] = git_ref
 
-    if tmt_test_filter_regex:
-        test["test_filter"] = tmt_test_filter_regex
+    if tmt_test_name:
+        test["test_name"] = tmt_test_name
+
+    if tmt_test_filter:
+        test["test_filter"] = tmt_test_filter
 
     merge_sha_info = ""
     if git_merge_sha:
@@ -691,15 +727,15 @@ def restart(
 
     test_type = "fmf" if "fmf" in request["test"] else "sti"
 
-    if tmt_plan_regex:
+    if tmt_plan_name:
         if test_type == "sti":
             exit_error("The '--plan' option is compabitble only with 'tmt` tests.")
-        request["test"][test_type]["name"] = tmt_plan_regex
+        request["test"][test_type]["name"] = tmt_plan_name
 
-    if tmt_plan_filter_regex:
+    if tmt_plan_filter:
         if test_type == "sti":
             exit_error("The '--plan-filter' option is compabitble only with 'tmt` tests.")
-        request["test"][test_type]["plan_filter"] = tmt_plan_filter_regex
+        request["test"][test_type]["plan_filter"] = tmt_plan_filter
 
     if test_type == "fmf":
         request["test"][test_type]["path"] = tmt_path

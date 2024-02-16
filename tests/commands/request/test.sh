@@ -150,6 +150,11 @@ testinfo "test plan-filter"
 testing-farm request --plan-filter "tag: plan-filter" --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .test.fmf.plan_filter | egrep '^tag: plan-filter$'
 
+# test-name
+testinfo "test test-name"
+testing-farm request --test "foo.*" --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .test.fmf.test_name | egrep '^foo\.\*$'
+
 # test-filter
 testinfo "test test-filter"
 testing-farm request --test-filter "tag: test-filter" --compose Fedora --dry-run | tee output

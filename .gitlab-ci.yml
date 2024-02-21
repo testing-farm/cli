@@ -6,6 +6,11 @@ stages:
 
 image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 
+# TODO: workaround for alpine not working in tmt 1.31
+# https://github.com/teemtee/tmt/issues/2694
+variables:
+  TESTING_FARM_WORKER_IMAGE: quay.io/testing-farm/worker:2024-01.1
+
 #
 # Mark tests to run for merge requests
 #
@@ -56,7 +61,8 @@ tmt:
   needs: ["container"]
   image: quay.io/testing-farm/cli:latest
   script:
-    - testing-farm request -c distro=alpine -e IMAGE_TAG=$CI_PIPELINE_ID
+    - testing-farm request --worker-image $TESTING_FARM_WORKER_IMAGE
+                           -c distro=alpine -e IMAGE_TAG=$CI_PIPELINE_ID
                            --git-url $CI_MERGE_REQUEST_PROJECT_URL
                            --git-ref $CI_MERGE_REQUEST_REF_PATH
 

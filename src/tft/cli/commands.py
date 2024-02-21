@@ -1150,14 +1150,14 @@ def reserve(
             if state in ["complete", "error"]:
                 exit_error("Reservation failed, check API request or contact Testing Farm")
 
-            if not print_only_request_id and task_id:
-                progress.update(task_id, description="Reservation job is [yellow]current_state[/yellow]")
+            if not print_only_request_id and task_id is not None:
+                progress.update(task_id, description=f"Reservation job is [yellow]{current_state}[/yellow]")
 
             time.sleep(1)
 
         while current_state != "ready":
             if not print_only_request_id and task_id:
-                progress.update(task_id, description="Reservation job is [yellow]current_state[/yellow]")
+                progress.update(task_id, description=f"Reservation job is [yellow]{current_state}[/yellow]")
 
             # get the command output
             artifacts_url = response.json()['run']['artifacts']

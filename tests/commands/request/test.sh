@@ -193,6 +193,22 @@ tail -n+4 output | jq -r .user.webpage.url | egrep '^https://example\.com$'
 tail -n+4 output | jq -r .user.webpage.icon | egrep '^https://example\.com/icon\.png$'
 tail -n+4 output | jq -r .user.webpage.name | egrep '^Example CI$'
 
+# test arch passed into tmt context
+testinfo "test arch passed into context"
+testing-farm request --dry-run --compose RHEL-8.6.0-Nightly --arch x86_64,s390x -c distro=rhel-8.6 | tee output
+tail -n+5 output | jq -r .environments[0].tmt.context.arch | egrep 'x86_64'
+tail -n+5 output | jq -r .environments[1].tmt.context.arch | egrep 's390x'
+
+testinfo "test arch passed into contexti no user context set"
+testing-farm request --dry-run --compose RHEL-8.6.0-Nightly --arch x86_64,s390x | tee output
+tail -n+5 output | jq -r .environments[0].tmt.context.arch | egrep 'x86_64'
+tail -n+5 output | jq -r .environments[1].tmt.context.arch | egrep 's390x'
+
+testinfo "test user set arch is respected in tmt context"
+testing-farm request --dry-run --compose RHEL-8.6.0-Nightly --arch x86_64,s390x -c arch=mycustomarch | tee output
+tail -n+5 output | jq -r .environments[0].tmt.context.arch | egrep 'mycustomarch'
+tail -n+5 output | jq -r .environments[1].tmt.context.arch | egrep 'mycustomarch'
+
 # test artifacts
 testinfo "test artifacts"
 testing-farm request --dry-run --fedora-koji-build 123 --fedora-koji-build install=false,id=1234 --fedora-copr-build some-project:fedora-38 --fedora-copr-build id=some-project:fedora-38 --redhat-brew-build 456 --redhat-brew-build id=456,install=1 --repository baseurl --repository id=baseurl,install=0 --repository-file https://example.com.repo --repository-file id=https://example.com.repo | tee output

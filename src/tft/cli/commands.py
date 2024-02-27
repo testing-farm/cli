@@ -323,7 +323,7 @@ def request(
     ),
     kickstart: Optional[List[str]] = OPTION_KICKSTART,
     pool: Optional[str] = OPTION_POOL,
-    tmt_context: Optional[List[str]] = typer.Option(
+    cli_tmt_context: Optional[List[str]] = typer.Option(
         None, "-c", "--context", metavar="key=value", help="Context variables to pass to `tmt`."
     ),
     variables: Optional[List[str]] = OPTION_VARIABLES,
@@ -473,14 +473,19 @@ def request(
         environment["artifacts"] = []
         environment["tmt"] = {}
 
+        # NOTE(ivasilev) From now on tmt.context will be always set. Even if user didn't request anything then
+        # arch requested will be passed into the context
+        tmt_context = options_to_dict("tmt context", cli_tmt_context or [])
+        if "arch" not in tmt_context:
+            # If context distro is not set by the user directly via -c let's set it according to arch requested
+            tmt_context["arch"] = arch
+        environment["tmt"].update({"context": tmt_context})
+
         if compose:
             environment["os"] = {"compose": compose}
 
         if secrets:
             environment["secrets"] = options_to_dict("environment secrets", secrets)
-
-        if tmt_context:
-            environment["tmt"].update({"context": options_to_dict("tmt context", tmt_context)})
 
         if variables:
             environment["variables"] = options_to_dict("environment variables", variables)

@@ -66,3 +66,8 @@ egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/on
 
 testing-farm restart --pipeline-type invalid https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
 egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
+
+# parallel-limit, just test it is accepted
+testinfo "test parallel-limit"
+testing-farm restart --parallel-limit 123 https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

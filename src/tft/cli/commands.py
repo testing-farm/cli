@@ -187,6 +187,14 @@ OPTION_HARDWARE: List[str] = typer.Option(
 OPTION_WORKER_IMAGE: Optional[str] = typer.Option(
     None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
 )
+OPTION_PARALLEL_LIMIT: Optional[int] = typer.Option(
+    None,
+    '--parallel-limit',
+    help=(
+        "Maximum amount of plans to be executed in parallel. Default values are 12 for Public Ranch and 5 for "
+        "Red Hat Ranch."
+    ),
+)
 
 
 def watch(
@@ -368,6 +376,7 @@ def request(
     user_webpage_icon: Optional[str] = typer.Option(
         None, help="URL of the icon of the user's webpage. It will be shown in the results viewer."
     ),
+    parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
 ):
     """
     Request testing from Testing Farm.
@@ -551,6 +560,9 @@ def request(
     if pipeline_type:
         request["settings"]["pipeline"]["type"] = pipeline_type.value
 
+    if parallel_limit:
+        request["settings"]["pipeline"]["parallel-limit"] = parallel_limit
+
     # worker image
     if worker_image:
         request["settings"]["worker"] = {"image": worker_image}
@@ -634,6 +646,7 @@ def restart(
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = OPTION_DRY_RUN,
     pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
+    parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
 ):
     """
     Restart a Testing Farm request.
@@ -756,12 +769,17 @@ def restart(
     # Add API key
     request['api_key'] = api_token
 
-    if pipeline_type:
+    if pipeline_type or parallel_limit:
         if "settings" not in request:
             request["settings"] = {}
         if "pipeline" not in request["settings"]:
             request["settings"]["pipeline"] = {}
+
+    if pipeline_type:
         request["settings"]["pipeline"]["type"] = pipeline_type.value
+
+    if parallel_limit:
+        request["settings"]["pipeline"]["parallel-limit"] = parallel_limit
 
     # dry run
     if dry_run:

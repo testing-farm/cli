@@ -186,6 +186,11 @@ tail -n+4 output | jq -r .settings.pipeline.type | egrep 'tmt-multihost'
 testing-farm request --pipeline-type invalid --compose Fedora --dry-run 2>&1 | tee output
 egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
 
+# parallel-limit
+testinfo "test parallel-limit"
+testing-farm request --parallel-limit 123 --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r '.settings.pipeline."parallel-limit"' | egrep '123'
+
 # user webpage
 testinfo "test user webpage"
 testing-farm request --dry-run --compose Fedora --user-webpage "https://example.com" --user-webpage-icon "https://example.com/icon.png" --user-webpage-name "Example CI" | tee output

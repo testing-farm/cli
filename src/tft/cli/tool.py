@@ -6,11 +6,13 @@ import os
 import typer
 
 import tft.cli.commands as commands
+from tft.cli.command.listing import listing
 from tft.cli.config import settings
 
 app = typer.Typer()
 
 app.command()(commands.cancel)
+app.command(name="list")(listing)
 app.command()(commands.request)
 app.command()(commands.restart)
 app.command()(commands.reserve)

@@ -20,19 +20,21 @@ from typing import Any, Dict, List, Optional
 
 import requests
 import typer
-from click.core import ParameterSource  # pyre-ignore[21]
+from click.core import ParameterSource
 from rich import print, print_json
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.table import Table
+from rich.table import Table  # type: ignore
 
 from tft.cli.config import settings
 from tft.cli.utils import (
     artifacts,
+    authorization_headers,
     check_unexpected_arguments,
     cmd_output_or_exit,
     console,
     console_stderr,
     exit_error,
+    extract_uuid,
     hw_constraints,
     install_http_retries,
     normalize_multistring_option,
@@ -66,6 +68,7 @@ RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref {RESERVE_REF} --test {RESERVE_TEST}"
 
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
+DEFAULT_AGE = "7d"
 
 # SSH command options for reservation connections
 SSH_RESERVATION_OPTIONS = (
@@ -85,6 +88,20 @@ class PipelineType(str, Enum):
     tmt_multihost = "tmt-multihost"
 
 
+class PipelineState(str, Enum):
+    new = "new"
+    queued = "queued"
+    running = "running"
+    complete = "complete"
+    error = "error"
+    canceled = "canceled"
+
+
+class Ranch(str, Enum):
+    public = "public"
+    redhat = "redhat"
+
+
 # Arguments and options that are shared among multiple commands
 ARGUMENT_API_URL: str = typer.Argument(
     settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
@@ -96,6 +113,12 @@ ARGUMENT_API_TOKEN: str = typer.Argument(
     settings.API_TOKEN,
     envvar="TESTING_FARM_API_TOKEN",
     show_default=False,
+    metavar='',
+    rich_help_panel='Environment variables',
+)
+ARGUMENT_INTERNAL_API_URL: str = typer.Argument(
+    settings.INTERNAL_API_URL,
+    envvar="TESTING_FARM_INTERNAL_API_URL",
     metavar='',
     rich_help_panel='Environment variables',
 )
@@ -559,14 +582,6 @@ def _parse_security_group_rules(ingress_rules: List[str], egress_rules: List[str
     _add_secgroup_rules('security_group_rules_egress', egress_rules)
 
     return security_group_rules
-
-
-def _get_headers(api_key: str) -> Dict[str, str]:
-    """
-    Return a dict with headers for a request to Testing Farm API.
-    Used for authentication.
-    """
-    return {'Authorization': f'Bearer {api_key}'}
 
 
 def _parse_xunit(xunit: str):
@@ -1093,7 +1108,7 @@ def request(
 
         if kickstart:
             # Typer escapes newlines in options, we need to unescape them
-            kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]  # pyre-ignore[6]
+            kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]
             environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
 
         if redhat_brew_build:
@@ -1246,7 +1261,7 @@ def request(
         raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(api_token))
+    response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1270,12 +1285,7 @@ def restart(
     context: typer.Context,
     request_id: str = typer.Argument(..., help="Testing Farm request ID or a string containing it."),
     api_url: str = ARGUMENT_API_URL,
-    internal_api_url: str = typer.Argument(
-        settings.INTERNAL_API_URL,
-        envvar="TESTING_FARM_INTERNAL_API_URL",
-        metavar='',
-        rich_help_panel='Environment variables',
-    ),
+    internal_api_url: str = ARGUMENT_INTERNAL_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
     source_api_url: Optional[str] = ARGUMENT_SOURCE_API_URL,
     internal_source_api_url: Optional[str] = ARGUMENT_INTERNAL_SOURCE_API_URL,
@@ -1344,18 +1354,8 @@ def restart(
     effective_target_api_url = target_api_url or api_url
     effective_target_api_token = target_api_token or api_token
 
-    # UUID pattern
-    uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
-
-    # Find the UUID in the string
-    uuid_match = uuid_pattern.search(request_id)
-
-    if not uuid_match:
-        exit_error(f"Could not find a valid Testing Farm request id in '{request_id}'.")
-        return
-
-    # Extract the UUID from the match object
-    _request_id = uuid_match.group()
+    # Extract the UUID from the request_id string
+    _request_id = extract_uuid(request_id)
 
     # Construct URL to the internal API
     get_url = urllib.parse.urljoin(str(effective_internal_source_api_url), f"v0.1/requests/{_request_id}")
@@ -1365,7 +1365,7 @@ def restart(
     install_http_retries(session)
 
     # Get the request details
-    response = session.get(get_url, headers=_get_headers(effective_source_api_token))
+    response = session.get(get_url, headers=authorization_headers(effective_source_api_token))
 
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
@@ -1486,7 +1486,7 @@ def restart(
 
     if test_type == "fmf":
         # The method explained in https://github.com/fastapi/typer/discussions/668
-        if context.get_parameter_source("tmt_path") == ParameterSource.COMMANDLINE:  # pyre-ignore[16]
+        if context.get_parameter_source("tmt_path") == ParameterSource.COMMANDLINE:
             request["test"][test_type]["path"] = tmt_path
 
     # worker image
@@ -1557,7 +1557,7 @@ def restart(
     post_url = urllib.parse.urljoin(str(effective_target_api_url), "v0.1/requests")
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(effective_target_api_token))
+    response = session.post(post_url, json=request, headers=authorization_headers(effective_target_api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1655,7 +1655,7 @@ def run(
             raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(api_token))
+    response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1855,7 +1855,7 @@ def reserve(
 
     if kickstart:
         # Typer escapes newlines in options, we need to unescape them
-        kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]  # pyre-ignore[6]
+        kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]
         environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
 
     if redhat_brew_build:
@@ -1952,7 +1952,7 @@ def reserve(
         raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(api_token))
+    response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -2118,22 +2118,12 @@ def cancel(
     # Accept these arguments only via environment variables
     check_unexpected_arguments(context, "api_url", "api_token")
 
-    # UUID pattern
-    uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
-
-    # Find the UUID in the string
-    uuid_match = uuid_pattern.search(request_id)
-
-    if not uuid_match:
-        exit_error(f"Could not find a valid Testing Farm request id in '{request_id}'.")
-        return
+    # Extract the UUID from the request_id string
+    _request_id = extract_uuid(request_id)
 
     if not api_token:
         exit_error("No API token found in the environment, please export 'TESTING_FARM_API_TOKEN' variable.")
         return
-
-    # Extract the UUID from the match object
-    _request_id = uuid_match.group()
 
     # Construct URL to the internal API
     request_url = urllib.parse.urljoin(str(api_url), f"v0.1/requests/{_request_id}")
@@ -2143,10 +2133,16 @@ def cancel(
     install_http_retries(session)
 
     # Get the request details
-    response = session.delete(request_url, headers=_get_headers(api_token))
+    response = session.delete(request_url, headers=authorization_headers(api_token))
 
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 403:
+        exit_error(
+            "You cannot cancel foreign requests. You can only cancel your own requests "
+            "or must have 'admin' permissions."
+        )
 
     if response.status_code == 404:
         exit_error("Request was not found. Verify the request ID is correct.")

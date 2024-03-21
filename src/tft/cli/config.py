@@ -1,7 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-from dynaconf import LazySettings
+from dynaconf import LazySettings  # type: ignore
 
 settings = LazySettings(
     # all environment variables have `TESTING_FARM_` prefix

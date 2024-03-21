@@ -4,24 +4,78 @@
 import glob
 import itertools
 import os
+import re
 import shlex
 import subprocess
 import sys
 import uuid
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict, List, NoReturn, Optional, Union
 
+import pendulum
 import requests
 import requests.adapters
 import typer
-from click.core import ParameterSource  # pyre-ignore[21]
+from click.core import ParameterSource
 from rich.console import Console
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML  # type: ignore
 from urllib3 import Retry
 
 from tft.cli.config import settings
 
 console = Console(soft_wrap=True)
 console_stderr = Console(soft_wrap=True, file=sys.stderr)
+
+
+@dataclass
+class Age:
+    value: int
+    unit: str
+
+    _unit_multiplier = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    _unit_human = {"s": "second", "m": "minute", "h": "hour", "d": "day"}
+
+    @classmethod
+    def from_string(cls, age_string: str) -> 'Age':
+        value, unit = age_string[:-1], age_string[-1]
+        if unit not in cls._unit_multiplier:
+            raise typer.BadParameter(f"Age must end with {', '.join(cls._unit_multiplier.keys())}")
+
+        if not value.isdigit():
+            raise typer.BadParameter(f"Invalid age value {value}")
+
+        return cls(value=int(age_string[:-1]), unit=age_string[-1])
+
+    @property
+    def birth_date(self) -> pendulum.DateTime:
+        now = pendulum.now(tz="UTC")
+        return now - pendulum.duration(seconds=self.value * self._unit_multiplier[self.unit])
+
+    @property
+    def human(self) -> str:
+        return f"{self.value} {self._unit_human[self.unit]}{'s' if self.value > 1 else ''}"
+
+    @staticmethod
+    def available_units() -> str:
+        return "s (seconds), m (minutes), h (hours) or d (days)"
+
+    def to_string(self, format="%Y-%m-%dT%H:%M:%S") -> str:
+        return self.birth_date.strftime(format)
+
+    def __str__(self):
+        return f"{self.value}{self.unit}"
+
+
+class OutputFormat(str, Enum):
+    text = "text"
+    json = "json"
+    yaml = "yaml"
+    table = "table"
+
+    @staticmethod
+    def available_formats():
+        return "text, json or table"
 
 
 def exit_error(error: str) -> NoReturn:
@@ -125,6 +179,19 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
             value_mixed = False
 
         container[path_splitted.pop()] = value_mixed
+
+        # Only process additional path elements if they exist
+        if path_splitted:
+            next_path = path_splitted.pop()
+
+            # handle compatible.distro
+            if next_path == 'distro':
+                container[next_path] = (
+                    container[next_path].append(value_mixed) if next_path in container else [value_mixed]
+                )
+            else:
+                container[next_path] = value_mixed
+
     return constraints
 
 
@@ -187,6 +254,27 @@ def uuid_valid(value: str, version: int = 4) -> bool:
         return False
 
 
+def extract_uuid(value: str) -> str:
+    """
+    Extracts a UUID from a string. If the string is already a valid UUID, returns it.
+    If the string contains a UUID, extracts and returns it.
+    Raises typer.Exit with error message if no valid UUID is found.
+    """
+    # Check if the value is already a valid UUID
+    if uuid_valid(value):
+        return value
+
+    # UUID pattern for extracting UUIDs from strings
+    uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
+
+    # Try to extract UUID from string
+    uuid_match = uuid_pattern.search(value)
+    if uuid_match:
+        return uuid_match.group()
+
+    exit_error(f"Could not find a valid Testing Farm request id in '{value}'.")
+
+
 class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.timeout = kwargs.pop('timeout', settings.DEFAULT_API_TIMEOUT)
@@ -216,7 +304,9 @@ def install_http_retries(
 
     status_forcelist_extend = status_forcelist_extend or []
 
-    params = {
+    from typing import Any, Dict
+
+    params: Dict[str, Any] = {
         "total": retries,
         "status_forcelist": [
             429,  # Too Many Requests
@@ -226,9 +316,9 @@ def install_http_retries(
             504,  # Gateway Timeout
         ]
         + status_forcelist_extend,
-        allowed_retry_parameter: ['HEAD', 'GET', 'POST', 'DELETE', 'PUT'],
         "backoff_factor": retry_backoff_factor,
     }
+    params[allowed_retry_parameter] = ['HEAD', 'GET', 'POST', 'DELETE', 'PUT']
     retry_strategy = Retry(**params)
 
     timeout_adapter = TimeoutHTTPAdapter(timeout=timeout, max_retries=retry_strategy)
@@ -263,8 +353,25 @@ def read_glob_paths(glob_paths: List[str]) -> str:
 
 def check_unexpected_arguments(context: typer.Context, *args: str) -> Union[None, NoReturn]:
     for argument in args:
-        if context.get_parameter_source(argument) == ParameterSource.COMMANDLINE:  # pyre-ignore[16]
+        if context.get_parameter_source(argument) == ParameterSource.COMMANDLINE:
             exit_error(
                 f"Unexpected argument '{context.params.get(argument)}'. "
                 "Please make sure you are passing the parameters correctly."
             )
+
+
+def validate_age(value: str) -> Age:
+    if value.endswith("m"):
+        return Age(int(value[:-1]), "m")
+    elif value.endswith("d"):
+        return Age(int(value[:-1]), "d")
+    else:
+        raise ValueError("Age must end with 'm' for months or 'd' for days.")
+
+
+def authorization_headers(api_key: str) -> Dict[str, str]:
+    """
+    Return a dict with headers for a request to Testing Farm API.
+    Used for authentication.
+    """
+    return {'Authorization': f'Bearer {api_key}'}

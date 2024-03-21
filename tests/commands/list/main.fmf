@@ -1,0 +1,1 @@
+test: env -i PATH=$PATH ./test.sh

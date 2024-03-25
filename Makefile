@@ -30,7 +30,7 @@ tmt:
 	tmt run -i tft-cli report -vvv
 
 tox:
-	tox
+	poetry run tox
 
 testing-farm: build push
 	testing-farm request -e IMAGE_TAG=$(IMAGE_TAG)

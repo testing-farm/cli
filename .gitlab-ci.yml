@@ -6,10 +6,9 @@ stages:
 
 image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 
-# TODO: workaround for alpine not working in tmt 1.31
-# https://github.com/teemtee/tmt/issues/2694
 variables:
-  TESTING_FARM_WORKER_IMAGE: quay.io/testing-farm/worker:2024-01.1
+  # Workaround until tmt-1.33 with required fixes is released
+  TESTING_FARM_WORKER_IMAGE: quay.io/testing-farm/worker:fixed-alpine
 
 #
 # Mark tests to run for merge requests

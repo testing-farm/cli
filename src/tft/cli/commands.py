@@ -10,6 +10,7 @@ import subprocess
 import textwrap
 import time
 import urllib.parse
+import xml.etree.ElementTree as ET
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -18,12 +19,14 @@ import requests
 import typer
 from rich import print
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 from tft.cli.config import settings
 from tft.cli.utils import (
     artifacts,
     cmd_output_or_exit,
     console,
+    console_stderr,
     exit_error,
     hw_constraints,
     install_http_retries,
@@ -55,6 +58,11 @@ RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
+
+
+class WatchFormat(str, Enum):
+    text = 'text'
+    json = 'json'
 
 
 class PipelineType(str, Enum):
@@ -197,11 +205,157 @@ OPTION_PARALLEL_LIMIT: Optional[int] = typer.Option(
 )
 
 
+def _parse_xunit(xunit: str):
+    """
+    A helper that parses xunit file into sets of passed_plans/failed_plans/errored_plans per arch.
+
+    The plans are returned as a {'arch': ['plan1', 'plan2', ..]} map. If it was impossible to deduce architecture
+    from a certain plan result (happens in case of early fails / infra issues), the plan will be listed under the 'N/A'
+    key.
+    """
+
+    def _add_plan(collection: dict, arch: str, plan: ET.Element):
+        # NOTE(ivasilev) name property will always be defined at this point, defaulting to '' to make type check happy
+        plan_name = plan.get('name', '')
+        if arch in collection:
+            collection[arch].append(plan_name)
+        else:
+            collection[arch] = [plan_name]
+
+    failed_plans = {}
+    passed_plans = {}
+    errored_plans = {}
+
+    results_root = ET.fromstring(xunit)
+    for plan in results_root.findall('./testsuite'):
+        # Try to get information about the environment (stored under testcase/testing-environment), may be
+        # absent if state is undefined
+        testing_environment: Optional[ET.Element] = plan.find('./testcase/testing-environment[@name="requested"]')
+        if not testing_environment:
+            console_stderr.print(
+                f'Could not find env specifications for {plan.get("name")}, assuming fail for all arches'
+            )
+            arch = 'N/A'
+        else:
+            arch_property = testing_environment.find('./property[@name="arch"]')
+            if arch_property is None:
+                console_stderr.print(f'Could not find arch property for plan {plan.get("name")} results, skipping')
+                continue
+            # NOTE(ivasilev) arch property will always be defined at this point, defaulting to '' to make type check
+            # happy
+            arch = arch_property.get('value', '')
+        if plan.get('result') == 'passed':
+            _add_plan(passed_plans, arch, plan)
+        elif plan.get('result') == 'failed':
+            _add_plan(failed_plans, arch, plan)
+        else:
+            _add_plan(errored_plans, arch, plan)
+
+    # Let's remove possible duplicates among N/A errored out tests
+    if 'N/A' in errored_plans:
+        errored_plans['N/A'] = list(set(errored_plans['N/A']))
+    return passed_plans, failed_plans, errored_plans
+
+
+def _get_request_summary(request: dict, session: requests.Session):
+    """A helper that prepares json summary of the test run"""
+    state = request.get('state')
+    artifacts_url = (request.get('run') or {}).get('artifacts')
+    xpath_url = f'{artifacts_url}/results.xml' if artifacts_url else ''
+    xunit = (request.get('result') or {}).get('xunit') or '<testsuites></testsuites>'
+    if state not in ['queued', 'running'] and artifacts_url:
+        # NOTE(ivasilev) xunit can be None (ex. in case of timed out requests) so let's fetch results.xml and use it
+        # as source of truth
+        try:
+            response = session.get(xpath_url)
+            if response.status_code == 200:
+                xunit = response.text
+        except requests.exceptions.ConnectionError:
+            console_stderr.print("Could not get xunit results")
+    passed_plans, failed_plans, errored_plans = _parse_xunit(xunit)
+    overall = (request.get("result") or {}).get("overall")
+    arches_requested = [env['arch'] for env in request['environments_requested']]
+
+    return {
+        'id': request['id'],
+        'state': request['state'],
+        'artifacts': artifacts_url,
+        'overall': overall,
+        'arches_requested': arches_requested,
+        'errored_plans': errored_plans,
+        'failed_plans': failed_plans,
+        'passed_plans': passed_plans,
+    }
+
+
+def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_details=True):
+    if not format == WatchFormat.text:
+        # Nothing to do, table is printed only when text output is requested
+        return
+
+    def _get_plans_list(collection):
+        return list(collection.values())[0] if collection.values() else []
+
+    def _has_plan(collection, arch, plan):
+        return plan in collection.get(arch, [])
+
+    # Let's transform plans maps into collection of plans to display plan result per arch statistics
+    errored = _get_plans_list(summary['errored_plans'])
+    failed = _get_plans_list(summary['failed_plans'])
+    passed = _get_plans_list(summary['passed_plans'])
+    generic_info_table = Table(show_header=True, header_style="bold magenta")
+    arches_requested = summary['arches_requested']
+    artifacts_url = summary['artifacts'] or ''
+    for column in summary.keys():
+        generic_info_table.add_column(column)
+    generic_info_table.add_row(
+        summary['id'],
+        summary['state'],
+        f'[link]{artifacts_url}[/link]',
+        summary['overall'],
+        ','.join(arches_requested),
+        str(len(errored)),
+        str(len(failed)),
+        str(len(passed)),
+    )
+    console.print(generic_info_table)
+
+    all_plans = sorted(set(errored + failed + passed))
+    details_table = Table(show_header=True, header_style="bold magenta")
+    for column in ["plan"] + arches_requested:
+        details_table.add_column(column)
+
+    for plan in all_plans:
+        row = [plan]
+        for arch in arches_requested:
+            if _has_plan(summary['passed_plans'], arch, plan):
+                res = '[green]pass[/green]'
+            elif _has_plan(summary['failed_plans'], arch, plan):
+                res = '[red]fail[/red]'
+            elif _has_plan(summary['errored_plans'], 'N/A', plan):
+                res = '[yellow]error[/yellow]'
+            else:
+                # If for some reason the plan has not been executed for this arch (this can happen after
+                # applying adjust rules) -> don't show anything
+                res = None
+            row.append(res)
+        details_table.add_row(*row)
+    if show_details:
+        console.print(details_table)
+
+
 def watch(
     api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
     id: str = typer.Option(..., help="Request ID to watch"),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
+    format: Optional[WatchFormat] = typer.Option(WatchFormat.text, help="Output format"),
 ):
+    def _console_print(*args, **kwargs):
+        """A helper function that will skip printing to console if output format is json"""
+        if format == WatchFormat.json:
+            return
+        console.print(*args, **kwargs)
+
     """Watch request for completion."""
 
     if not uuid_valid(id):
@@ -210,10 +364,10 @@ def watch(
     get_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{id}")
     current_state: str = ""
 
-    console.print(f"🔎 api [blue]{get_url}[/blue]")
+    _console_print(f"🔎 api [blue]{get_url}[/blue]")
 
     if not no_wait:
-        console.print("💡 waiting for request to finish, use ctrl+c to skip", style="bright_yellow")
+        _console_print("💡 waiting for request to finish, use ctrl+c to skip", style="bright_yellow")
 
     artifacts_shown = False
 
@@ -245,37 +399,45 @@ def watch(
 
         current_state = state
 
+        request_summary = _get_request_summary(request, session)
+        if format == WatchFormat.json:
+            console.print(json.dumps(request_summary, indent=2))
+
         if state == "new":
-            console.print("👶 request is [blue]waiting to be queued[/blue]")
+            _console_print("👶 request is [blue]waiting to be queued[/blue]")
 
         elif state == "queued":
-            console.print("👷 request is [blue]queued[/blue]")
+            _console_print("👷 request is [blue]queued[/blue]")
 
         elif state == "running":
-            console.print("🚀 request is [blue]running[/blue]")
-            console.print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
+            _console_print("🚀 request is [blue]running[/blue]")
+            _console_print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
             artifacts_shown = True
 
         elif state == "complete":
             if not artifacts_shown:
-                console.print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
+                _console_print(f"🚢 artifacts [blue]{request['run']['artifacts']}[/blue]")
 
             overall = request["result"]["overall"]
             if overall in ["passed", "skipped"]:
-                console.print("✅ tests passed", style="green")
+                _console_print("✅ tests passed", style="green")
+                _print_summary_table(request_summary, format)
                 raise typer.Exit()
 
             if overall in ["failed", "error", "unknown"]:
-                console.print(f"❌ tests {overall}", style="red")
+                _console_print(f"❌ tests {overall}", style="red")
                 if overall == "error":
-                    console.print(f"{request['result']['summary']}", style="red")
+                    _console_print(f"{request['result']['summary']}", style="red")
+                _print_summary_table(request_summary, format)
                 raise typer.Exit(code=1)
 
         elif state == "error":
-            console.print(f"📛 pipeline error\n{request['result']['summary']}", style="red")
+            _console_print(f"📛 pipeline error\n{request['result']['summary']}", style="red")
+            _print_summary_table(request_summary, format)
             raise typer.Exit(code=2)
 
         if no_wait:
+            _print_summary_table(request_summary, format, show_details=False)
             raise typer.Exit()
 
         time.sleep(settings.WATCH_TICK)
@@ -603,7 +765,7 @@ def request(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
-    watch(api_url, response.json()['id'], no_wait)
+    watch(api_url, response.json()['id'], no_wait, format=WatchFormat.text)
 
 
 def restart(
@@ -806,7 +968,7 @@ def restart(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
-    watch(str(api_url), response.json()['id'], no_wait)
+    watch(str(api_url), response.json()['id'], no_wait, format=WatchFormat.text)
 
 
 def run(

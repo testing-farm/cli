@@ -4,6 +4,7 @@
 import glob
 import os
 import subprocess
+import sys
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
@@ -16,6 +17,7 @@ from urllib3 import Retry
 from tft.cli.config import settings
 
 console = Console(soft_wrap=True)
+console_stderr = Console(soft_wrap=True, file=sys.stderr)
 
 
 def exit_error(error: str):

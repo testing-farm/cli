@@ -135,11 +135,11 @@ OPTION_POST_INSTALL_SCRIPT: Optional[str] = typer.Option(
 )
 OPTION_KICKSTART: Optional[List[str]] = typer.Option(
     None,
-    metavar="key=value",
+    metavar="key=value|@file",
     help=(
         "Kickstart specification to customize the guest installation. Expressed as a key=value pair. "
         "For more information about the supported keys see "
-        "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart."
+        "https://tmt.readthedocs.io/en/stable/spec/plans.html#kickstart. The @ prefix marks a yaml file to load."
     ),
 )
 OPTION_POOL: Optional[str] = typer.Option(
@@ -177,10 +177,18 @@ OPTION_DRY_RUN: bool = typer.Option(
     False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL
 )
 OPTION_VARIABLES: Optional[List[str]] = typer.Option(
-    None, "-e", "--environment", metavar="key=value", help="Variables to pass to the test environment."
+    None,
+    "-e",
+    "--environment",
+    metavar="key=value|@file",
+    help="Variables to pass to the test environment. The @ prefix marks a yaml file to load.",
 )
 OPTION_SECRETS: Optional[List[str]] = typer.Option(
-    None, "-s", "--secret", metavar="key=value", help="Secret variables to pass to the test environment."
+    None,
+    "-s",
+    "--secret",
+    metavar="key=value|@file",
+    help="Secret variables to pass to the test environment. The @ prefix marks a yaml file to load.",
 )
 OPTION_HARDWARE: List[str] = typer.Option(
     None,
@@ -494,7 +502,11 @@ def request(
     kickstart: Optional[List[str]] = OPTION_KICKSTART,
     pool: Optional[str] = OPTION_POOL,
     cli_tmt_context: Optional[List[str]] = typer.Option(
-        None, "-c", "--context", metavar="key=value", help="Context variables to pass to `tmt`."
+        None,
+        "-c",
+        "--context",
+        metavar="key=value|@file",
+        help="Context variables to pass to `tmt`. The @ prefix marks a yaml file to load.",
     ),
     variables: Optional[List[str]] = OPTION_VARIABLES,
     secrets: Optional[List[str]] = OPTION_SECRETS,
@@ -502,10 +514,11 @@ def request(
         None,
         "-T",
         "--tmt-environment",
-        metavar="key=value",
+        metavar="key=value|@file",
         help=(
             "Environment variables to pass to the tmt process. "
-            "Used to configure tmt report plugins like reportportal or polarion."
+            "Used to configure tmt report plugins like reportportal or polarion. "
+            "The @ prefix marks a yaml file to load."
         ),
     ),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
@@ -516,7 +529,11 @@ def request(
     repository: List[str] = OPTION_REPOSITORY,
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
     tags: Optional[List[str]] = typer.Option(
-        None, "-t", "--tag", metavar="key=value", help="Tag cloud resources with given value."
+        None,
+        "-t",
+        "--tag",
+        metavar="key=value|@file",
+        help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
     ),
     watchdog_dispatch_delay: Optional[int] = typer.Option(
         None,

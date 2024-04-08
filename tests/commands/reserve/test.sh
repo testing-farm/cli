@@ -53,7 +53,7 @@ egrep "💻 SuperOS on aarch64 via pool super-pool" output
 # invalid kickstart
 testinfo "test invalid kickstart specification"
 testing-farm reserve $ssh_key_option  --kickstart invalid | tee output
-egrep "⛔ Options for environment kickstart are invalid, must be defined as \`key=value\`" output
+egrep "⛔ Option `invalid` is invalid, must be defined as \`key=value|@file\`." output
 
 # dry run
 testinfo "test dry run"

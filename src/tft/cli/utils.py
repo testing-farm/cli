@@ -6,12 +6,13 @@ import os
 import subprocess
 import sys
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, NoReturn, Optional, Union
 
 import requests
 import requests.adapters
 import typer
 from rich.console import Console
+from ruamel.yaml import YAML
 from urllib3 import Retry
 
 from tft.cli.config import settings
@@ -20,7 +21,7 @@ console = Console(soft_wrap=True)
 console_stderr = Console(soft_wrap=True, file=sys.stderr)
 
 
-def exit_error(error: str):
+def exit_error(error: str) -> NoReturn:
     """Exit with given error message"""
     console.print(f"⛔ {error}", style="red")
     raise typer.Exit(code=255)
@@ -93,15 +94,46 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
     return {key: value if key not in ("disk", "network") else [value] for key, value in constraints.items()}
 
 
+def options_from_file(filepath) -> Dict[str, str]:
+    """Read environment variables from a yaml file."""
+
+    with open(filepath, 'r') as file:
+        try:
+            yaml = YAML(typ="safe").load(file.read())
+        except Exception:
+            exit_error(f"Failed to load variables from yaml file {filepath}.")
+
+        if not yaml:  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+            return {}
+
+        if not isinstance(yaml, dict):  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+            exit_error(f"Environment file {filepath} is not a dict.")
+
+        if any([isinstance(value, (list, dict)) for value in yaml.values()]):
+            exit_error(f"Values of environment file {filepath} are not primitive types.")
+
+        return yaml  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+
+
 def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:
-    """Create a dictionary from list of `key=value` options"""
-    try:
-        return {option.split("=", 1)[0]: option.split("=", 1)[1] for option in options}
+    """Create a dictionary from list of `key=value|@file` options"""
 
-    except IndexError:
-        exit_error(f"Options for {name} are invalid, must be defined as `key=value`")
+    options_dict = {}
+    for option in options:
+        # Option is `@file`
+        if option.startswith('@'):
+            if not os.path.isfile(option[1:]):
+                exit_error(f"Invalid environment file in option `{option}` specified.")
+            options_dict.update(options_from_file(option[1:]))
 
-    return {}
+        # Option is `key=value`
+        else:
+            try:
+                options_dict.update({option.split("=", 1)[0]: option.split("=", 1)[1]})
+            except IndexError:
+                exit_error(f"Option `{option}` is invalid, must be defined as `key=value|@file`.")
+
+    return options_dict
 
 
 def uuid_valid(value: str, version: int = 4) -> bool:

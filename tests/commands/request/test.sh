@@ -6,6 +6,7 @@ testinfo() { printf "\n== TEST: $@ ==================\n"; }
 set +o pipefail
 
 # we need to work in a clean directory, the CWD is a git repo and can mess around with us!
+TEST_DATA=$PWD/data
 TMPDIR=$(mktemp -d)
 pushd $TMPDIR
 
@@ -88,23 +89,54 @@ egrep "💻 SuperOS on aarch64 via pool super-pool" output
 # invalid variables
 testinfo "test invalid variables"
 testing-farm request --environment invalid | tee output
-egrep "⛔ Options for environment variables are invalid, must be defined as \`key=value\`" output
+egrep "⛔ Option \`invalid\` is invalid, must be defined as \`key=value|@file\`." output
 
 # invalid secrets
 testinfo "test invalid secrets"
 testing-farm request --environment invalid | tee output
 testing-farm request --secret invalid | tee output
-egrep "⛔ Options for environment secrets are invalid, must be defined as \`key=value\`" output
+egrep "⛔ Option \`invalid\` is invalid, must be defined as \`key=value|@file\`." output
+
+# environment from file - non existent file
+testinfo "test environment from file - non existent file"
+testing-farm request --environment @xxx --dry-run | tee output
+egrep "⛔ Invalid environment file in option \`@xxx\` specified." output
+
+# environment from file - empty file
+testinfo "test environment from file - empty file"
+testing-farm request --environment @$TEST_DATA/env1.yaml --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].variables | egrep '\{\}'
+
+# environment from file - file that is not a dict
+testinfo "test environment from file - file that is not a dict"
+testing-farm request --environment @$TEST_DATA/env2.yaml --dry-run | tee output
+egrep "⛔ Environment file $TEST_DATA/env2.yaml is not a dict." output
+
+# environment from file - file that contains nested dicts
+testinfo "test environment from file - file that contains nested dicts"
+testing-farm request --environment @$TEST_DATA/env3.yaml --dry-run | tee output
+egrep "⛔ Values of environment file $TEST_DATA/env3.yaml are not primitive types." output
+
+# environment from file - file with a single variable
+testinfo "test environment from file - file with a single variable"
+testing-farm request --environment @$TEST_DATA/env4.yaml --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].variables | egrep '"foo": null'
+
+# environment from file - file with two variables
+testinfo "test environment from file - file with two variables"
+testing-farm request --environment @$TEST_DATA/env5.yaml --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].variables | egrep '"foo": "bar"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"bar": 123'
 
 # invalid tmt context
 testinfo "test invalid tmt context"
 testing-farm request --context invalid | tee output
-egrep "⛔ Options for tmt context are invalid, must be defined as \`key=value\`" output
+egrep "⛔ Option \`invalid\` is invalid, must be defined as \`key=value|@file\`." output
 
 # invalid kickstart
 testinfo "test invalid kickstart specification"
 testing-farm request --kickstart invalid | tee output
-egrep "⛔ Options for environment kickstart are invalid, must be defined as \`key=value\`" output
+egrep "⛔ Option \`invalid\` is invalid, must be defined as \`key=value|@file\`." output
 
 # dry run
 testinfo "test dry run"

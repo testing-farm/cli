@@ -53,5 +53,8 @@ if [ "$1" == "reserve" ]; then
     done
 fi
 
-# run the tool
-$CONTAINER_RUNTIME run --network=host $SET_NO_COLOR -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -it $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"
+TTY="-t"
+if [ ! -z "$NO_TTY" ]; then
+	TTY=""
+fi
+$CONTAINER_RUNTIME run --network=host $SET_NO_COLOR -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -i $TTY $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"

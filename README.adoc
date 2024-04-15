@@ -91,6 +91,16 @@ See https://no-color.org/ for details.
 NO_COLOR=1 testing-farm version
 ```
 
+=== Separate stdout and stderr
+
+By default stderr and stdout streams are squashed as the container uses --tty option.
+To have separate streams you can set the NO_TTY variable.
+Please note that in this case the usual nice coloured formatting will be gone.
+
+```
+NO_TTY=1 testing-farm version
+```
+
 == Development
 
 === Install via Poetry

@@ -194,10 +194,10 @@ OPTION_HARDWARE: List[str] = typer.Option(
     None,
     help=(
         "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
-        "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
-        "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-        "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
-        "for the hardware specification."
+        "e.g. ``disk.size='>= 40 GiB'``, such keys will be merged in the resulting environment "
+        "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, not overwriting "
+        "each other. See https://docs.testing-farm.io/Testing%20Farm/0.1/test-request.html#hardware "
+        "for the supported hardware selection possibilities."
     ),
 )
 OPTION_WORKER_IMAGE: Optional[str] = typer.Option(
@@ -489,16 +489,7 @@ def request(
         None,
         help="Compose used to provision system-under-test. If not set, tests will expect 'container' provision method specified in tmt plans.",  # noqa
     ),
-    hardware: List[str] = typer.Option(
-        None,
-        help=(
-            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
-            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
-            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
-            "for the hardware specification."
-        ),
-    ),
+    hardware: List[str] = OPTION_HARDWARE,
     kickstart: Optional[List[str]] = OPTION_KICKSTART,
     pool: Optional[str] = OPTION_POOL,
     cli_tmt_context: Optional[List[str]] = typer.Option(
@@ -806,16 +797,7 @@ def restart(
     git_url: Optional[str] = typer.Option(None, help="Force URL of the GIT repository to test."),
     git_ref: Optional[str] = typer.Option(None, help="Force GIT ref or branch to test."),
     git_merge_sha: Optional[str] = typer.Option(None, help="Force GIT ref or branch into which --ref will be merged."),
-    hardware: List[str] = typer.Option(
-        None,
-        help=(
-            "HW requirements, expressed as key/value pairs. Keys can consist of several properties, "
-            "e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment "
-            "with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged, "
-            "not overwriting each other. See https://tmt.readthedocs.io/en/stable/spec/hardware.html "
-            "for the hardware specification."
-        ),
-    ),
+    hardware: List[str] = OPTION_HARDWARE,
     tmt_plan_name: Optional[str] = OPTION_TMT_PLAN_NAME,
     tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
     tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,

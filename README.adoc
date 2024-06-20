@@ -26,6 +26,13 @@ curl -Lo ~/bin/testing-farm "https://gitlab.com/testing-farm/cli/-/raw/main/cont
 chmod +x ~/bin/testing-farm
 ....
 
+In order to get the latest version of the tool, update the container simply using the following command:
+
+[source,shell]
+....
+testing-farm update
+....
+
 === Pip
 
 You can local install the tool directly from PyPi.

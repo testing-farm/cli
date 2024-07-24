@@ -1,16 +1,12 @@
 all: build test clean
 .PHONY: all
 
-# this file is available inside a container when run via `podman` - see `man 1 podman-run`
-# it contains the `image` variable used later in the Makefile to detect toolbox image
--include /run/.containerenv
-
 # default image tag set to current user name
 IMAGE_TAG ?= ${USER}
 
 # in toolbox environment run tmt against localhost
 TMT_CONTEXT = -c distro=alpine
-ifeq ($(findstring fedora-toolbox,$(image)),fedora-toolbox)
+ifeq ($(wildcard $(/run/.toolboxenv)),)
 TMT_RUN_ARGS = -a provision -h local
 TMT_CONTEXT = -c distro=fedora
 endif

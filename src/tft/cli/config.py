@@ -19,4 +19,6 @@ settings = LazySettings(
     DEFAULT_API_RETRIES=7,
     # should lead to delays of 0.5, 1, 2, 4, 8, 16, 32 seconds
     DEFAULT_RETRY_BACKOFF_FACTOR=1,
+    # system CA certificates path, default for RHEL variants
+    REQUESTS_CA_BUNDLE="/etc/ssl/certs/ca-bundle.crt",
 )

@@ -1055,6 +1055,8 @@ def run(
     if verbose:
         console.print(f"🔎 api [blue]{get_url}[/blue]")
 
+    search: Optional[re.Match[str]] = None
+
     # wait for the sanity test to finish
     with Progress(
         SpinnerColumn(),
@@ -1102,6 +1104,12 @@ def run(
         try:
             search = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts_url}/results.xml").text)
 
+        except requests.exceptions.SSLError:
+            console.print(
+                "\r🚫 [yellow]artifacts unreachable via SSL, do you have RH CA certificates installed?[/yellow]"
+            )
+            console.print(f"\r🚢 artifacts [blue]{artifacts_url}[/blue]")
+
         except requests.exceptions.ConnectionError:
             console.print("\r🚫 [yellow]artifacts unreachable, are you on VPN?[/yellow]")
             console.print(f"\r🚢 artifacts [blue]{artifacts_url}[/blue]")
@@ -1110,7 +1118,6 @@ def run(
     if not search:
         exit_error("Could not find working directory, cannot continue")
 
-    assert search
     workdir = str(search.groups(1)[0])
     output = f"{workdir}/testing-farm/sanity/execute/data/guest/default-0/testing-farm/script-1/output.txt"
 
@@ -1347,12 +1354,24 @@ def reserve(
                 if not pipeline_log:
                     exit_error(f"Pipeline log was empty. Please file an issue to {settings.ISSUE_TRACKER}.")
 
+            except requests.exceptions.SSLError:
+                exit_error(
+                    textwrap.dedent(
+                        f"""
+                    Failed to access Testing Farm artifacts because of SSL validation error.
+                    If you use Red Hat Ranch please make sure you have Red Hat CA certificates installed.
+                    Otherwise file an issue to {settings.ISSUE_TRACKER}.
+                """
+                    )
+                )
+                return
+
             except requests.exceptions.ConnectionError:
                 exit_error(
                     textwrap.dedent(
                         f"""
                     Failed to access Testing Farm artifacts.
-                    If you use Red Hat Ranch please make sure you are conneted to the VPN.
+                    If you use Red Hat Ranch please make sure you are connected to the VPN.
                     Otherwise file an issue to {settings.ISSUE_TRACKER}.
                 """
                     )

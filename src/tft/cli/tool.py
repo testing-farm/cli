@@ -21,3 +21,8 @@ app.command()(commands.watch)
 # This command is available only for the container based deployment
 if os.path.exists(settings.CONTAINER_SIGN):
     app.command()(commands.update)
+
+# Expose REQUESTS_CA_BUNDLE in the environment for RHEL-like systems
+# This is needed for custom CA certificates to nicely work.
+if "REQUESTS_CA_BUNDLE" not in os.environ and os.path.exists(settings.REQUESTS_CA_BUNDLE):
+    os.environ["REQUESTS_CA_BUNDLE"] = settings.REQUESTS_CA_BUNDLE

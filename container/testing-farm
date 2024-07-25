@@ -28,7 +28,7 @@ if [ "$1" == "update" ]; then
     exit 0
 fi
 
-# mount $HOME/.ssh direcotry
+# mount SSH public keys in case of reservations
 if [ "$1" == "reserve" ]; then
     if grep -q -- '--ssh-public-key' <<< "$*"; then
         echo "Option '--ssh-public-key' is not supported with container installation. Use the default settings please."
@@ -53,8 +53,35 @@ if [ "$1" == "reserve" ]; then
     done
 fi
 
+# mount CA certificates from the system, works only on RHEL-like systems for now
+SYSTEM_CA_PATH="/etc/ssl/certs/ca-bundle.crt"
+ALPINE_CA_PATH="/etc/ssl/certs/ca-certificates.crt"
+if [ -e "$SYSTEM_CA_PATH" ]; then
+    # we need a copy of the file to be able to volume mount it
+    TEMP_CA_FILE=$(mktemp)
+    cp -f "$(readlink -f $SYSTEM_CA_PATH)" "$TEMP_CA_FILE"
+
+    # make sure to remove the temporary file after execution
+    trap 'rm -f $TEMP_CA_FILE' EXIT
+
+    # mount to Alpine's standard path for CA certificates
+    MOUNT_CA="-v $TEMP_CA_FILE:$ALPINE_CA_PATH:ro,Z"
+fi
+
+# allocate a pseudo-TTY for container if NO_TTY unset
 TTY="-t"
 if [ ! -z "$NO_TTY" ]; then
-	TTY=""
+    TTY=""
 fi
-$CONTAINER_RUNTIME run --network=host $SET_NO_COLOR -e TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN --rm -i $TTY $MOUNT_GIT $MOUNT_SSH $IMAGE testing-farm "$@"
+
+$CONTAINER_RUNTIME run \
+    --rm \
+    --interactive \
+    --network=host $SET_NO_COLOR \
+    --env TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN \
+    --env REQUESTS_CA_BUNDLE=$ALPINE_CA_PATH \
+    $TTY \
+    $MOUNT_GIT \
+    $MOUNT_SSH \
+    $MOUNT_CA \
+    $IMAGE testing-farm "$@"

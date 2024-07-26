@@ -21,4 +21,7 @@ settings = LazySettings(
     DEFAULT_RETRY_BACKOFF_FACTOR=1,
     # system CA certificates path, default for RHEL variants
     REQUESTS_CA_BUNDLE="/etc/ssl/certs/ca-bundle.crt",
+    # Testing Farm sanity test,
+    TESTING_FARM_TESTS_GIT_URL="https://gitlab.com/testing-farm/tests",
+    TESTING_FARM_SANITY_PLAN="/testing-farm/sanity",
 )

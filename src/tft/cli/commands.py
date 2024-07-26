@@ -519,6 +519,7 @@ def request(
     fedora_copr_build: List[str] = OPTION_FEDORA_COPR_BUILD,
     repository: List[str] = OPTION_REPOSITORY,
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
+    sanity: bool = typer.Option(False, help="Run Testing Farm sanity test.", rich_help_panel=RESERVE_PANEL_GENERAL),
     tags: Optional[List[str]] = typer.Option(
         None,
         "-t",
@@ -565,6 +566,16 @@ def request(
             "Without compose the tests run against a container image specified in the plan. "
             "Only 'x86_64' architecture supported in this case."
         )
+
+    if sanity:
+        if git_url or tmt_plan_name:
+            exit_error(
+                "The option [underline]--sanity[/underline] is mutually exclusive with "
+                "[underline]--git-url[/underline] and [underline]--plan[/underline]."
+            )
+
+        git_url = str(settings.TESTING_FARM_TESTS_GIT_URL)
+        tmt_plan_name = str(settings.TESTING_FARM_SANITY_PLAN)
 
     # resolve git repository details from the current repository
     if not git_url:

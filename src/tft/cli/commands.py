@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import textwrap
 import time
 import urllib.parse
@@ -1415,10 +1416,35 @@ def reserve(
 
             time.sleep(1)
 
-    console.print(f"🌎 ssh root@{guest}")
+    sshproxy_url = urllib.parse.urljoin(str(settings.API_URL), f"v0.1/sshproxy?api_key={settings.API_TOKEN}")
+    response = session.get(sshproxy_url)
+
+    content = response.json()
+
+    ssh_private_key = ""
+    if content.get('ssh_private_key_base_64'):
+        ssh_private_key = base64.b64decode(content['ssh_private_key_base_64']).decode()
+
+    ssh_proxy_option = f" -J {content['ssh_proxy']}" if content.get('ssh_proxy') else ""
+
+    ssh_private_key_option = ""
+    if ssh_private_key:
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.write(ssh_private_key.encode())
+        tmp.flush()
+        tmp.close()
+
+        os.chmod(tmp.name, 0o600)
+
+        ssh_private_key_option = f" -i {tmp.name}"
+
+    console.print(f"🌎 ssh{ssh_proxy_option}{ssh_private_key_option} root@{guest}")
 
     if autoconnect:
-        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")
+        os.system(
+            f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null{ssh_proxy_option}{ssh_private_key_option} root@{guest}"  # noqa: E501
+        )
+        os.unlink(tmp.name)
 
 
 def update():

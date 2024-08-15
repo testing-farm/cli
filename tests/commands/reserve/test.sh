@@ -7,7 +7,18 @@ set +o pipefail
 
 # we need to work in a clean directory, the CWD is a git repo and can mess around with us!
 TMPDIR=$(mktemp -d)
-pushd $TMPDIR
+pushd "$TMPDIR"
+
+# temporary ssh setup
+HOME=$PWD
+export HOME
+mkdir "$HOME/.ssh"
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    eval "$(ssh-agent)"
+    SSH_KEY=$(mktemp -u -p "$HOME/.ssh")
+    ssh-keygen -t rsa -q -f "$SSH_KEY" -N ""
+    ssh-add "$SSH_KEY"
+fi
 
 # no token
 testinfo "no token specified"
@@ -29,13 +40,8 @@ ssh_key_option="--ssh-public-key /var/tmp/some-key"
 
 # no ssh-agent
 testinfo "no ssh agent"
-testing-farm reserve $ssh_key_option | tee output
-egrep "^💻 Fedora-Rawhide on x86_64" output
-egrep "^🕗 Reserved for 30 minutes$" output
-egrep "⛔ No 'ssh-agent' seems to be running, it is required for reservations to work, cannot continue." output
-
-# create a fake ssh agent
-export SSH_AUTH_SOCK=/some-socket
+SSH_AUTH_SOCK=fake testing-farm reserve $ssh_key_option | tee output
+egrep "⛔ SSH_AUTH_SOCK socket does not exist, make sure the ssh-agent is running by executing 'eval \`ssh-agent\`'." output
 
 # defaults + invalid token
 testinfo "defaults + invalid token"

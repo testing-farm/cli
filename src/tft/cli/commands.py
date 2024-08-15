@@ -6,8 +6,8 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
-import tempfile
 import textwrap
 import time
 import urllib.parse
@@ -1189,6 +1189,28 @@ def reserve(
         if not print_only_request_id:
             console.print(message)
 
+    # Sanity checks for ssh-agent
+
+    # Check of SSH_AUTH_SOCK is defined
+    ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
+    if not ssh_auth_sock:
+        exit_error("SSH_AUTH_SOCK is not defined, make sure the ssh-agent is running by executing 'eval `ssh-agent`'.")
+
+    # Check if SSH_AUTH_SOCK exists
+    if not os.path.exists(ssh_auth_sock):
+        exit_error(
+            "SSH_AUTH_SOCK socket does not exist, make sure the ssh-agent is running by executing 'eval `ssh-agent`'."
+        )
+
+    # Check if value of SSH_AUTH_SOCK is socket
+    if not stat.S_ISSOCK(os.stat(ssh_auth_sock).st_mode):
+        exit_error("SSH_AUTH_SOCK is not a socket, make sure the ssh-agent is running by executing 'eval `ssh-agent`'.")
+
+    # Check if ssh-add -L is not empty
+    ssh_add_output = subprocess.run(["ssh-add", "-L"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if ssh_add_output.returncode != 0:
+        exit_error("No SSH identities found in the SSH agent. Please run `ssh-add`.")
+
     # check for token
     if not settings.API_TOKEN:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
@@ -1427,24 +1449,16 @@ def reserve(
 
     ssh_proxy_option = f" -J {content['ssh_proxy']}" if content.get('ssh_proxy') else ""
 
-    ssh_private_key_option = ""
     if ssh_private_key:
-        tmp = tempfile.NamedTemporaryFile(delete=False)
-        tmp.write(ssh_private_key.encode())
-        tmp.flush()
-        tmp.close()
+        console.print("🔑 [blue]Adding SSH proxy key[/blue]")
+        subprocess.run(["ssh-add", "-"], input=ssh_private_key.encode())
 
-        os.chmod(tmp.name, 0o600)
-
-        ssh_private_key_option = f" -i {tmp.name}"
-
-    console.print(f"🌎 ssh{ssh_proxy_option}{ssh_private_key_option} root@{guest}")
+    console.print(f"🌎 ssh{ssh_proxy_option} root@{guest}")
 
     if autoconnect:
         os.system(
-            f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null{ssh_proxy_option}{ssh_private_key_option} root@{guest}"  # noqa: E501
+            f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null{ssh_proxy_option} root@{guest}"  # noqa: E501
         )
-        os.unlink(tmp.name)
 
 
 def update():

@@ -59,6 +59,13 @@ tmt:
     - testing-farm request -c distro=alpine -e IMAGE_TAG=$CI_PIPELINE_ID
                            --git-url $CI_MERGE_REQUEST_PROJECT_URL
                            --git-ref $CI_MERGE_REQUEST_REF_PATH
+goss:
+  extends: .merge-request
+  stage: 🔎 test
+  needs: ["container"]
+  image: quay.io/testing-farm/cli:$CI_PIPELINE_ID
+  script:
+    - make goss
 
 #
 # 🚀 deploy

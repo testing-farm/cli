@@ -1,0 +1,32 @@
+---
+package:
+  bash:
+    installed: true
+  git:
+    installed: true
+  openssh-client-common:
+    installed: true
+  openssh-client-default:
+    installed: true
+
+command:
+  testing-farm version:
+    exit-status: 0
+    stdout:
+      - 0.0.19
+    stderr: []
+    timeout: 10000
+
+file:
+  /root/.ssh:
+    exists: true
+    mode: "0700"
+    filetype: directory
+  /root/.ssh/config:
+    exists: true
+    mode: "0600"
+    filetype: file
+    contents:
+      - Host *
+      - "  StrictHostKeyChecking no"
+      - "  UserKnownHostsFile /dev/null"

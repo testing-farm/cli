@@ -1,0 +1,35 @@
+# See the documentation for more information:
+# https://packit.dev/docs/configuration/
+
+specfile_path: cli.spec
+
+# name in upstream package repository or registry (e.g. in PyPI)
+upstream_package_name: tft-cli
+
+# Strip starting 'v' from our git tags
+upstream_tag_template: v{version}
+
+targets:
+  - fedora-all
+
+jobs:
+# Build on MRs
+- job: copr_build
+  trigger: pull_request
+
+# Build on commits to main
+- job: copr_build
+  trigger: commit
+  branch: main
+  owner: "@testing-farm"
+  project: latest
+
+# Build on releases
+- job: copr_build
+  trigger: release
+  owner: "@testing-farm"
+  project: stable
+
+# Test on MRs
+- job: tests
+  trigger: pull_request

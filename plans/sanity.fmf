@@ -11,6 +11,14 @@ provision:
   how: container
   image: quay.io/testing-farm/cli:${IMAGE_TAG}
 
+prepare:
+  - name: packages
+    how: install
+    package:
+      - git
+      - netcat
+      - jq
+
 adjust:
   prepare:
     how: shell

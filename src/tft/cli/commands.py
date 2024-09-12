@@ -212,6 +212,13 @@ OPTION_PARALLEL_LIMIT: Optional[int] = typer.Option(
         "Red Hat Ranch."
     ),
 )
+OPTION_TAGS = typer.Option(
+    None,
+    "-t",
+    "--tag",
+    metavar="key=value|@file",
+    help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
+)
 
 
 def _parse_xunit(xunit: str):
@@ -521,13 +528,7 @@ def request(
     repository: List[str] = OPTION_REPOSITORY,
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
     sanity: bool = typer.Option(False, help="Run Testing Farm sanity test.", rich_help_panel=RESERVE_PANEL_GENERAL),
-    tags: Optional[List[str]] = typer.Option(
-        None,
-        "-t",
-        "--tag",
-        metavar="key=value|@file",
-        help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
-    ),
+    tags: Optional[List[str]] = OPTION_TAGS,
     watchdog_dispatch_delay: Optional[int] = typer.Option(
         None,
         help="How long (seconds) before the guest \"is-alive\" watchdog is dispatched. Note that this is implemented only in Artemis service.",  # noqa
@@ -811,6 +812,7 @@ def restart(
     git_ref: Optional[str] = typer.Option(None, help="Force GIT ref or branch to test."),
     git_merge_sha: Optional[str] = typer.Option(None, help="Force GIT ref or branch into which --ref will be merged."),
     hardware: List[str] = OPTION_HARDWARE,
+    tags: Optional[List[str]] = OPTION_TAGS,
     tmt_plan_name: Optional[str] = OPTION_TMT_PLAN_NAME,
     tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
     tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
@@ -965,6 +967,16 @@ def restart(
 
     if parallel_limit:
         request["settings"]["pipeline"]["parallel-limit"] = parallel_limit
+
+    if tags:
+        for environment in request["environments"]:
+            if "settings" not in environment or not environment["settings"]:
+                environment["settings"] = {}
+
+            if 'provisioning' not in environment["settings"]:
+                environment["settings"]["provisioning"] = {}
+
+            environment["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
 
     # dry run
     if dry_run:

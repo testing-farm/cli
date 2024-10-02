@@ -747,6 +747,7 @@ def request(
 
     # worker image
     if worker_image:
+        console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
         request["settings"]["worker"] = {"image": worker_image}
 
     if not user_webpage and (user_webpage_name or user_webpage_icon):
@@ -944,7 +945,7 @@ def restart(
 
     # worker image
     if worker_image:
-        console.print(f"👷 forcing worker image [blue]{worker_image}[/blue]")
+        console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
         request["settings"] = request["settings"] if request.get("settings") else {}
         request["settings"]["worker"] = {"image": worker_image}
         # it is required to have also pipeline key set, otherwise API will fail
@@ -1191,6 +1192,7 @@ def reserve(
     autoconnect: bool = typer.Option(
         True, help="Automatically connect to the guest via SSH.", rich_help_panel=RESERVE_PANEL_GENERAL
     ),
+    worker_image: Optional[str] = OPTION_WORKER_IMAGE,
 ):
     """
     Reserve a system in Testing Farm.
@@ -1293,6 +1295,12 @@ def reserve(
     request = TestingFarmRequestV1
     request["api_key"] = settings.API_TOKEN
     request["test"]["fmf"] = test
+
+    # worker image
+    if worker_image:
+        console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
+        request["settings"] = request["settings"] if request.get("settings") else {}
+        request["settings"]["worker"] = {"image": worker_image}
 
     request["environments"] = [environment]
 

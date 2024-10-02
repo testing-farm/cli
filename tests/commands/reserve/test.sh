@@ -101,5 +101,11 @@ egrep "⏳ Maximum reservation time is 3600 minutes" output
 tail -n+5 output | tr -d '\n' | jq -r '.environments[].variables.TF_RESERVATION_DURATION' | egrep '^3600$'
 tail -n+5 output | tr -d '\n' | jq -r '.settings.pipeline.timeout' | egrep '^3600$'
 
+# worker-image option
+testinfo "worker-image option"
+testing-farm reserve --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest | tee output
+egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
+tail -n+6 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
+
 # remove temporary directory
 rm -rf $TMPDIR

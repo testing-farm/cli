@@ -853,6 +853,17 @@ def restart(
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
+    # The API token is valid, but it doesn't own the request
+    if response.status_code == 403:
+        console.print(
+            "⚠️ [yellow] You are not the owner of this request. Any secrets associated with the request will not be included on the restart.[/yellow]"  # noqa: E501
+        )
+        # Construct URL to the internal API
+        get_url = urllib.parse.urljoin(str(api_url), f"v0.1/requests/{_request_id}")
+
+        # Get the request details
+        response = session.get(get_url)
+
     if response.status_code != 200:
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 

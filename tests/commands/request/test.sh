@@ -128,6 +128,13 @@ testing-farm request --environment @$TEST_DATA/env5.yaml --dry-run | tee output
 tail -n+4 output | jq -r .environments[0].variables | egrep '"foo": "bar"'
 tail -n+4 output | jq -r .environments[0].variables | egrep '"bar": 123'
 
+# multiple environment options under single --environment option
+testinfo "multiple environment options under single --environment option"
+testing-farm request --environment 'aaa=bbb "foo foo=bar bar"' --environment 'foo=bar' --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].variables | egrep '"aaa": "bbb"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"foo foo": "bar bar"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"foo": "bar"'
+
 # invalid tmt context
 testinfo "test invalid tmt context"
 testing-farm request --context invalid | tee output
@@ -162,7 +169,7 @@ tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
 tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
 
 # test kickstart
-testing-farm request --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart post-install="%post\n ls\n %end"  | tee output
+testing-farm request --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart 'post-install="%post\n ls\n %end"'  | tee output
 tail -n+4 output | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
 tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
 

@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import glob
+import itertools
 import os
+import shlex
 import subprocess
 import sys
 import uuid
@@ -119,6 +121,12 @@ def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:
     """Create a dictionary from list of `key=value|@file` options"""
 
     options_dict = {}
+
+    # Turn option list such as
+    # `['aaa=bbb "foo foo=bar bar"', 'foo=bar']` into
+    # `['aaa=bbb', 'foo foo=bar bar', 'foo=bar']`
+    options = list(itertools.chain.from_iterable(shlex.split(option) for option in options))
+
     for option in options:
         # Option is `@file`
         if option.startswith('@'):

@@ -75,7 +75,7 @@ tail -n+5 output | tr -d '\n' | jq -r '.environments[].hardware.virtualization."
 
 # test kickstart
 testinfo "test kickstart"
-testing-farm reserve $ssh_key_option --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart post-install="%post\n ls\n %end"  | tee output
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart 'post-install="%post\n ls\n %end"'  | tee output
 tail -n+5 output | tr -d '\n' | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
 tail -n+5 output | tr -d '\n' | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
 

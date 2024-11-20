@@ -107,5 +107,12 @@ testing-farm reserve --dry-run --compose Fedora --worker-image quay.io/testing-f
 egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
 tail -n+6 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
 
+# tags, just test it is accepted
+testinfo "test tags"
+testing-farm reserve --dry-run --tag ArtemisUseSpot=false -t Business=TestingFarm 2>&1 | tee output
+egrep '"tags":' output
+egrep '"ArtemisUseSpot": "false"' output
+egrep '"Business": "TestingFarm"' output
+
 # remove temporary directory
 rm -rf $TMPDIR

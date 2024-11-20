@@ -1187,6 +1187,7 @@ def reserve(
         rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
     ),
     hardware: List[str] = OPTION_HARDWARE,
+    tags: Optional[List[str]] = OPTION_TAGS,
     kickstart: Optional[List[str]] = OPTION_KICKSTART,
     pool: Optional[str] = OPTION_POOL,
     fedora_koji_build: List[str] = OPTION_FEDORA_KOJI_BUILD,
@@ -1255,7 +1256,7 @@ def reserve(
     environment["pool"] = pool
     environment["artifacts"] = []
 
-    if post_install_script:
+    if post_install_script or tags:
         if "settings" not in environment:
             environment["settings"] = {}
 
@@ -1267,6 +1268,9 @@ def reserve(
 
     if hardware:
         environment["hardware"] = hw_constraints(hardware)
+
+    if tags:
+        environment["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
 
     if kickstart:
         environment["kickstart"] = options_to_dict("environment kickstart", kickstart)

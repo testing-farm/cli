@@ -114,5 +114,11 @@ egrep '"tags":' output
 egrep '"ArtemisUseSpot": "false"' output
 egrep '"Business": "TestingFarm"' output
 
+# default should be non-spot
+testinfo "test tags"
+testing-farm reserve --dry-run 2>&1 | tee output
+egrep '"tags":' output
+egrep '"ArtemisUseSpot": "false"' output
+
 # remove temporary directory
 rm -rf $TMPDIR

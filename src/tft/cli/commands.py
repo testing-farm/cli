@@ -1256,12 +1256,18 @@ def reserve(
     environment["pool"] = pool
     environment["artifacts"] = []
 
-    if post_install_script or tags:
-        if "settings" not in environment:
-            environment["settings"] = {}
+    if "settings" not in environment:
+        environment["settings"] = {}
 
-        if 'provisioning' not in environment["settings"]:
-            environment["settings"]["provisioning"] = {}
+    if "provisioning" not in environment["settings"]:
+        environment["settings"]["provisioning"] = {}
+
+    if "tags" not in environment["settings"]["provisioning"]:
+        environment["settings"]["provisioning"]["tags"] = {}
+
+    # reserve command is for interacting with the guest, and so non-spot instances
+    # would be nicer for the user than them getting shocked when they loose their work.
+    environment["settings"]["provisioning"]["tags"]["ArtemisUseSpot"] = "false"
 
     if compose:
         environment["os"] = {"compose": compose}

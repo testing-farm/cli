@@ -13,7 +13,7 @@ command:
   testing-farm version:
     exit-status: 0
     stdout:
-      - 0.0.20
+      - 0.0.21
     stderr: []
     timeout: 10000
 

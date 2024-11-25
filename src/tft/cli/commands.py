@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import ipaddress
 import json
 import os
 import re
@@ -59,6 +60,9 @@ RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
+
+# Won't be validating CIDR and 65535 max port range with regex here, not worth it
+SECURITY_GROUP_RULE_FORMAT = re.compile(r"(tcp|ip|icmp|udp|-1|[0-255]):(.*):(\d{1,5}-\d{1,5}|\d{1,5}|-1)")
 
 
 class WatchFormat(str, Enum):
@@ -133,6 +137,24 @@ OPTION_TMT_PATH: str = typer.Option(
 OPTION_PIPELINE_TYPE: Optional[PipelineType] = typer.Option(None, help="Force a specific Testing Farm pipeline type.")
 OPTION_POST_INSTALL_SCRIPT: Optional[str] = typer.Option(
     None, help="Post-install script to run right after the guest boots for the first time."
+)
+OPTION_SECURITY_GROUP_RULE_INGRESS: Optional[List[str]] = typer.Option(
+    None,
+    help=(
+        "Additional ingress security group rules to be passed to guest in "
+        "PROTOCOL:CIDR:PORT format. Multiple rules can be specified as comma separated, "
+        "eg. `tcp:109.81.42.42/32:22,142.0.42.0/24:22`. "
+        "Supported by AWS only atm."
+    ),
+)
+OPTION_SECURITY_GROUP_RULE_EGRESS: Optional[List[str]] = typer.Option(
+    None,
+    help=(
+        "Additional egress security group rules to be passed to guest in "
+        "PROTOCOL:CIDR:PORT format. Multiple rules can be specified as comma separated, "
+        "eg. `tcp:109.81.42.42/32:22,142.0.42.0/24:22`. "
+        "Supported by AWS only atm."
+    ),
 )
 OPTION_KICKSTART: Optional[List[str]] = typer.Option(
     None,
@@ -219,6 +241,51 @@ OPTION_TAGS = typer.Option(
     metavar="key=value|@file",
     help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
 )
+
+
+# NOTE(ivasilev) Largely borrowed from artemis-cli
+def _parse_security_group_rules(ingress_rules: List[str], egress_rules: List[str]) -> Dict[str, Any]:
+    """
+    Returns a dictionary with ingress/egress rules in TFT request friendly format
+    """
+    security_group_rules = {}
+
+    def _add_secgroup_rules(sg_type: str, sg_data: List[str]) -> None:
+        security_group_rules[sg_type] = []
+
+        for sg_rule in normalize_multistring_option(sg_data):
+            matches = re.match(SECURITY_GROUP_RULE_FORMAT, sg_rule)
+            if not matches:
+                exit_error(f"Bad format of security group rule '{sg_rule}', should be PROTOCOL:CIDR:PORT")  # noqa: E231
+
+            protocol, cidr, port = matches[1], matches[2], matches[3]
+
+            # Let's validate cidr
+            try:
+                # This way a single ip address will be converted to a valid ip/32 cidr.
+                cidr = str(ipaddress.ip_network(cidr))
+            except ValueError as err:
+                exit_error(f'CIDR {cidr} has incorrect format: {err}')
+
+            # Artemis expectes port_min/port_max, -1 has to be convered to a proper range 0-65535
+            port_min = 0 if port == '-1' else int(port.split('-')[0])
+            port_max = 65535 if port == '-1' else int(port.split('-')[-1])
+
+            # Add rule for Artemis API
+            security_group_rules[sg_type].append(
+                {
+                    'type': sg_type.split('_')[-1],
+                    'protocol': protocol,
+                    'cidr': cidr,
+                    'port_min': port_min,
+                    'port_max': port_max,
+                }
+            )
+
+    _add_secgroup_rules('security_group_rules_ingress', ingress_rules)
+    _add_secgroup_rules('security_group_rules_egress', egress_rules)
+
+    return security_group_rules
 
 
 def _parse_xunit(xunit: str):
@@ -448,7 +515,12 @@ def watch(
                 raise typer.Exit(code=1)
 
         elif state == "error":
-            _console_print(f"📛 pipeline error\n{request['result']['summary']}", style="red")
+            msg = (
+                request['result'].get('summary')
+                if request['result']
+                else '\n'.join(note['message'] for note in request['notes'])
+            )
+            _console_print(f"📛 pipeline error\n{msg}", style="red")
             _print_summary_table(request_summary, format)
             raise typer.Exit(code=2)
 
@@ -540,6 +612,8 @@ def request(
     dry_run: bool = OPTION_DRY_RUN,
     pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
     post_install_script: Optional[str] = OPTION_POST_INSTALL_SCRIPT,
+    security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
+    security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
     user_webpage: Optional[str] = typer.Option(
         None, help="URL to the user's webpage. The link will be shown in the results viewer."
     ),
@@ -708,7 +782,17 @@ def request(
 
         environments.append(environment)
 
-    if tags or watchdog_dispatch_delay or watchdog_period_delay or post_install_script:
+    if any(
+        provisioning_detail
+        for provisioning_detail in [
+            tags,
+            watchdog_dispatch_delay,
+            watchdog_period_delay,
+            post_install_script,
+            security_group_rule_ingress,
+            security_group_rule_egress,
+        ]
+    ):
         if "settings" not in environments[0]:
             environments[0]["settings"] = {}
 
@@ -726,6 +810,10 @@ def request(
 
     if post_install_script:
         environments[0]["settings"]["provisioning"]["post_install_script"] = post_install_script
+
+    if security_group_rule_ingress or security_group_rule_egress:
+        rules = _parse_security_group_rules(security_group_rule_ingress or [], security_group_rule_egress or [])
+        environments[0]["settings"]["provisioning"].update(rules)
 
     # create final request
     request = TestingFarmRequestV1
@@ -1206,6 +1294,8 @@ def reserve(
         True, help="Automatically connect to the guest via SSH.", rich_help_panel=RESERVE_PANEL_GENERAL
     ),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
+    security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
+    security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
 ):
     """
     Reserve a system in Testing Farm.
@@ -1259,6 +1349,10 @@ def reserve(
     if "settings" not in environment:
         environment["settings"] = {}
 
+    if post_install_script or security_group_rule_ingress or security_group_rule_egress or tags:
+        if "settings" not in environment:
+            environment["settings"] = {}
+
     if "provisioning" not in environment["settings"]:
         environment["settings"]["provisioning"] = {}
 
@@ -1298,6 +1392,10 @@ def reserve(
 
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
+
+    if security_group_rule_ingress or security_group_rule_egress:
+        rules = _parse_security_group_rules(security_group_rule_ingress or [], security_group_rule_egress or [])
+        environment["settings"]["provisioning"].update(rules)
 
     console.print(f"🕗 Reserved for [blue]{str(reservation_duration)}[/blue] minutes")
     environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}

@@ -217,6 +217,28 @@ testinfo "test post install script"
 testing-farm request --dry-run --compose Fedora --post-install-script="some-script" | tee output
 tail -n+4 output | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
 
+# security group rules
+testinfo "test security group rules"
+testing-farm request --dry-run --compose Fedora --security-group-rule-ingress="tcp:109.81.42.42/32:22,tcp:10.0.2.16/28:22" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.security_group_rules_ingress | jq length | grep -w 2
+testing-farm request --dry-run --compose Fedora --security-group-rule-ingress="tcp:109.81.42.42/32:22,tcp:10.0.2.16/28:22" --security-group-rule-ingress="udp:109.81.14.42/32:22" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.security_group_rules_ingress | jq length | grep -w 3
+testing-farm request --dry-run --compose Fedora --security-group-rule-egress="tcp:109.81.42.42/32:22,tcp:10.0.2.16/28:22" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.security_group_rules_egress | jq length | grep -w 2
+# make sure all ports and all protocols can be selected with -1
+testing-farm request --dry-run --compose Fedora --security-group-rule-egress="-1:109.81.42.42/32:-1,-1:10.0.2.16/28:-1" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.security_group_rules_egress | jq length | grep -w 2
+# make sure ipv6 is accepted
+testing-farm request --dry-run --compose Fedora --security-group-rule-egress="tcp:109.81.42.42/32:22,tcp:2002::1234:abcd:ffff:c0a8:101/128:22" | tee output
+tail -n+4 output | jq -r .environments[].settings.provisioning.security_group_rules_egress | jq length | grep -w 2
+# bad format
+testing-farm request --dry-run --compose Fedora --security-group-rule-egress="tcp:42.42.42.42/WRONG_CIDR:22" | tee output
+tail -n+3 output | egrep 'CIDR 42.42.42.42/WRONG_CIDR has incorrect format'
+testing-farm request --dry-run --compose Fedora --security-group-rule-egress="tcp:42.42.42.42/32:NOT_AN_INTEGER_PORT" | tee output
+tail -n+3 output | egrep "Bad format of security group rule 'tcp:42.42.42.42/32:NOT_AN_INTEGER_PORT', should be PROTOCOL:CIDR:PORT"
+testing-farm request --dry-run --compose Fedora --security-group-rule-ingress="totally:messed:up:security:group:rule" | tee output
+tail -n+3 output | egrep "Bad format of security group rule 'totally:messed:up:security:group:rule', should be PROTOCOL:CIDR:PORT"
+
 # pipeline type
 testinfo "test pipeline type"
 testing-farm request --pipeline-type tmt-multihost --compose Fedora --dry-run | tee output

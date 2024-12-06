@@ -1296,6 +1296,9 @@ def reserve(
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
     security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
+    skip_workstation_access: bool = typer.Option(
+        False, help="Do not allow ingress traffic from this workstation's ip to the reserved machine"
+    ),
 ):
     """
     Reserve a system in Testing Farm.
@@ -1393,8 +1396,21 @@ def reserve(
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
-    if security_group_rule_ingress or security_group_rule_egress:
-        rules = _parse_security_group_rules(security_group_rule_ingress or [], security_group_rule_egress or [])
+    if not skip_workstation_access or security_group_rule_ingress or security_group_rule_egress:
+        ingress_rules = security_group_rule_ingress or []
+        if not skip_workstation_access:
+            try:
+                get_ip = requests.get(settings.PUBLIC_IP_CHECKER_URL)
+            except requests.exceptions.RequestException as err:
+                exit_error(f"Could not get workstation ip to form a security group rule: {err}")
+
+            if get_ip.ok:
+                ip = get_ip.text.strip()
+                ingress_rules.append(f'-1:{ip}:-1')
+            else:
+                exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
+
+        rules = _parse_security_group_rules(ingress_rules, security_group_rule_egress or [])
         environment["settings"]["provisioning"].update(rules)
 
     console.print(f"🕗 Reserved for [blue]{str(reservation_duration)}[/blue] minutes")

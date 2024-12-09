@@ -1406,7 +1406,8 @@ def reserve(
 
             if get_ip.ok:
                 ip = get_ip.text.strip()
-                ingress_rules.append(f'-1:{ip}:-1')
+                ingress_rules.append(f'-1:{ip}:-1')  # noqa: E231
+
             else:
                 exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
 
@@ -1593,27 +1594,10 @@ def reserve(
 
             time.sleep(1)
 
-    sshproxy_url = urllib.parse.urljoin(str(settings.API_URL), f"v0.1/sshproxy?api_key={settings.API_TOKEN}")
-    response = session.get(sshproxy_url)
-
-    content = response.json()
-
-    ssh_private_key = ""
-    if content.get('ssh_private_key_base_64'):
-        ssh_private_key = base64.b64decode(content['ssh_private_key_base_64']).decode()
-
-    ssh_proxy_option = f" -J {content['ssh_proxy']}" if content.get('ssh_proxy') else ""
-
-    if ssh_private_key:
-        console.print("🔑 [blue]Adding SSH proxy key[/blue]")
-        subprocess.run(["ssh-add", "-"], input=ssh_private_key.encode())
-
-    console.print(f"🌎 ssh{ssh_proxy_option} root@{guest}")
+    console.print(f"🌎 ssh root@{guest}")
 
     if autoconnect:
-        os.system(
-            f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null{ssh_proxy_option} root@{guest}"  # noqa: E501
-        )
+        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")  # noqa: E501
 
 
 def update():

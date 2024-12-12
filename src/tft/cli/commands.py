@@ -687,7 +687,7 @@ def request(
             git_ref = cmd_output_or_exit("git rev-parse HEAD", "could not autodetect git ref")
 
         # detect test type from local files
-        if os.path.exists(".fmf/version"):
+        if os.path.exists(os.path.join((tmt_path or ""), ".fmf/version")):
             test_type = "fmf"
         elif os.path.exists("tests/tests.yml"):
             test_type = "sti"

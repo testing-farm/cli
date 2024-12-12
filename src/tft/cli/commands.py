@@ -1306,6 +1306,9 @@ def reserve(
     skip_workstation_access: bool = typer.Option(
         False, help="Do not allow ingress traffic from this workstation's ip to the reserved machine"
     ),
+    git_ref: Optional[str] = typer.Option(
+        None, help="Force GIT ref or branch. Useful for testing changes to reservation plan."
+    ),
 ):
     """
     Reserve a system in Testing Farm.
@@ -1347,7 +1350,7 @@ def reserve(
     # test details
     test = TestTMT
     test["url"] = RESERVE_URL
-    test["ref"] = RESERVE_REF
+    test["ref"] = git_ref or RESERVE_REF
     test["name"] = RESERVE_PLAN
 
     # environment details

@@ -120,5 +120,10 @@ testing-farm reserve --dry-run 2>&1 | tee output
 egrep '"tags":' output
 egrep '"ArtemisUseSpot": "false"' output
 
+# default should be non-spot
+testinfo "git-ref option"
+testing-farm reserve --git-ref abc --dry-run 2>&1 | tee output
+tail -n+5 output | tr -d '\n' | jq -r '.test.fmf.ref' | egrep '^abc$'
+
 # remove temporary directory
 rm -rf $TMPDIR

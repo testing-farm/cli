@@ -174,10 +174,14 @@ OPTION_POOL: Optional[str] = typer.Option(
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_REDHAT_BREW_BUILD: List[str] = typer.Option(
-    None, help="Brew build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+    None,
+    help="Brew build task IDs or build NVRs to install on the test environment.",
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_FEDORA_KOJI_BUILD: List[str] = typer.Option(
-    None, help="Koji build task IDs to install on the test environment.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
+    None,
+    help="Koji build task IDs or build NVRs to install on the test environment.",
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_FEDORA_COPR_BUILD: List[str] = typer.Option(
     None,

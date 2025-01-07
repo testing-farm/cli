@@ -40,7 +40,7 @@ from tft.cli.utils import (
 
 cli_version: str = pkg_resources.get_distribution("tft-cli").version
 
-TestingFarmRequestV1: Dict[str, Any] = {'api_key': None, 'test': {}, 'environments': None}
+TestingFarmRequestV1: Dict[str, Any] = {'test': {}, 'environments': None}
 Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifacts': None, 'variables': {}}
 TestTMT: Dict[str, Any] = {'url': None, 'ref': None, 'name': None}
 TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
@@ -290,6 +290,14 @@ def _parse_security_group_rules(ingress_rules: List[str], egress_rules: List[str
     _add_secgroup_rules('security_group_rules_egress', egress_rules)
 
     return security_group_rules
+
+
+def _get_headers(api_key: str) -> Dict[str, str]:
+    """
+    Return a dict with headers for a request to Testing Farm API.
+    Used for authentication.
+    """
+    return {'Authorization': f'Bearer {api_key}'}
 
 
 def _parse_xunit(xunit: str):
@@ -821,7 +829,6 @@ def request(
 
     # create final request
     request = TestingFarmRequestV1
-    request["api_key"] = api_token
     if test_type == "fmf":
         test["path"] = tmt_path
         request["test"]["fmf"] = test
@@ -864,7 +871,7 @@ def request(
         raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request)
+    response = session.post(post_url, json=request, headers=_get_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -936,14 +943,14 @@ def restart(
     _request_id = uuid_match.group()
 
     # Construct URL to the internal API
-    get_url = urllib.parse.urljoin(str(internal_api_url), f"v0.1/requests/{_request_id}?api_key={api_token}")
+    get_url = urllib.parse.urljoin(str(internal_api_url), f"v0.1/requests/{_request_id}")
 
     # Setting up retries
     session = requests.Session()
     install_http_retries(session)
 
     # Get the request details
-    response = session.get(get_url)
+    response = session.get(get_url, headers=_get_headers(api_token))
 
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
@@ -1045,9 +1052,6 @@ def restart(
         # it is required to have also pipeline key set, otherwise API will fail
         request["settings"]["pipeline"] = request["settings"].get("pipeline", {})
 
-    # Add API key
-    request['api_key'] = api_token
-
     if pipeline_type or parallel_limit:
         if "settings" not in request:
             request["settings"] = {}
@@ -1080,7 +1084,7 @@ def restart(
     post_url = urllib.parse.urljoin(str(api_url), "v0.1/requests")
 
     # handle errors
-    response = session.post(post_url, json=request)
+    response = session.post(post_url, json=request, headers=_get_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1122,7 +1126,6 @@ def run(
 
     # create request
     request = TestingFarmRequestV1
-    request["api_key"] = settings.API_TOKEN
 
     test = TestTMT
     test["url"] = RUN_REPO
@@ -1166,7 +1169,7 @@ def run(
             raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request)
+    response = session.post(post_url, json=request, headers=_get_headers(settings.API_TOKEN))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1434,7 +1437,6 @@ def reserve(
 
     # create final request
     request = TestingFarmRequestV1
-    request["api_key"] = settings.API_TOKEN
     request["test"]["fmf"] = test
 
     # worker image
@@ -1469,7 +1471,7 @@ def reserve(
         raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request)
+    response = session.post(post_url, json=request, headers=_get_headers(settings.API_TOKEN))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1648,7 +1650,7 @@ def cancel(
     install_http_retries(session)
 
     # Get the request details
-    response = session.delete(request_url, json={"api_key": api_token})
+    response = session.delete(request_url, headers=_get_headers(api_token))
 
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")

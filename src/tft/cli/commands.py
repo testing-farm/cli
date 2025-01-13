@@ -319,13 +319,14 @@ def _parse_xunit(xunit: str):
 
     failed_plans = {}
     passed_plans = {}
+    skipped_plans = {}
     errored_plans = {}
 
     results_root = ET.fromstring(xunit)
     for plan in results_root.findall('./testsuite'):
-        # Try to get information about the environment (stored under testcase/testing-environment), may be
+        # Try to get information about the environment (stored under ./testing-environment), may be
         # absent if state is undefined
-        testing_environment: Optional[ET.Element] = plan.find('./testcase/testing-environment[@name="requested"]')
+        testing_environment: Optional[ET.Element] = plan.find('./testing-environment[@name="requested"]')
         if not testing_environment:
             console_stderr.print(
                 f'Could not find env specifications for {plan.get("name")}, assuming fail for all arches'
@@ -343,13 +344,15 @@ def _parse_xunit(xunit: str):
             _add_plan(passed_plans, arch, plan)
         elif plan.get('result') == 'failed':
             _add_plan(failed_plans, arch, plan)
+        elif plan.get('result') == 'skipped':
+            _add_plan(skipped_plans, arch, plan)
         else:
             _add_plan(errored_plans, arch, plan)
 
     # Let's remove possible duplicates among N/A errored out tests
     if 'N/A' in errored_plans:
         errored_plans['N/A'] = list(set(errored_plans['N/A']))
-    return passed_plans, failed_plans, errored_plans
+    return passed_plans, failed_plans, skipped_plans, errored_plans
 
 
 def _get_request_summary(request: dict, session: requests.Session):
@@ -367,7 +370,7 @@ def _get_request_summary(request: dict, session: requests.Session):
                 xunit = response.text
         except requests.exceptions.ConnectionError:
             console_stderr.print("Could not get xunit results")
-    passed_plans, failed_plans, errored_plans = _parse_xunit(xunit)
+    passed_plans, failed_plans, skipped_plans, errored_plans = _parse_xunit(xunit)
     overall = (request.get("result") or {}).get("overall")
     arches_requested = [env['arch'] for env in request['environments_requested']]
 
@@ -379,6 +382,7 @@ def _get_request_summary(request: dict, session: requests.Session):
         'arches_requested': arches_requested,
         'errored_plans': errored_plans,
         'failed_plans': failed_plans,
+        'skipped_plans': skipped_plans,
         'passed_plans': passed_plans,
     }
 
@@ -397,6 +401,7 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
     # Let's transform plans maps into collection of plans to display plan result per arch statistics
     errored = _get_plans_list(summary['errored_plans'])
     failed = _get_plans_list(summary['failed_plans'])
+    skipped = _get_plans_list(summary['skipped_plans'])
     passed = _get_plans_list(summary['passed_plans'])
     generic_info_table = Table(show_header=True, header_style="bold magenta")
     arches_requested = summary['arches_requested']
@@ -411,11 +416,12 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
         ','.join(arches_requested),
         str(len(errored)),
         str(len(failed)),
+        str(len(skipped)),
         str(len(passed)),
     )
     console.print(generic_info_table)
 
-    all_plans = sorted(set(errored + failed + passed))
+    all_plans = sorted(set(errored + failed + skipped + passed))
     details_table = Table(show_header=True, header_style="bold magenta")
     for column in ["plan"] + arches_requested:
         details_table.add_column(column)
@@ -425,6 +431,8 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
         for arch in arches_requested:
             if _has_plan(summary['passed_plans'], arch, plan):
                 res = '[green]pass[/green]'
+            elif _has_plan(summary['skipped_plans'], arch, plan):
+                res = '[white]skip[/white]'
             elif _has_plan(summary['failed_plans'], arch, plan):
                 res = '[red]fail[/red]'
             elif _has_plan(summary['errored_plans'], 'N/A', plan):

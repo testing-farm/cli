@@ -20,7 +20,7 @@ import pkg_resources
 import requests
 import typer
 from click.core import ParameterSource  # pyre-ignore[21]
-from rich import print
+from rich import print, print_json
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
@@ -48,6 +48,7 @@ TestSTI: Dict[str, Any] = {'url': None, 'ref': None}
 
 REQUEST_PANEL_TMT = "TMT Options"
 REQUEST_PANEL_STI = "STI Options"
+REQUEST_PANEL_RESERVE = "Reserve Options"
 
 RESERVE_PANEL_GENERAL = "General Options"
 RESERVE_PANEL_ENVIRONMENT = "Environment Options"
@@ -57,8 +58,10 @@ RUN_REPO = "https://gitlab.com/testing-farm/tests"
 RUN_PLAN = "/testing-farm/sanity"
 
 RESERVE_PLAN = os.getenv("TESTING_FARM_RESERVE_PLAN", "/testing-farm/reserve")
+RESERVE_TEST = os.getenv("TESTING_FARM_RESERVE_TEST", "/testing-farm/reserve-system")
 RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-farm/tests")
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
+RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref {RESERVE_REF} --test {RESERVE_TEST}"
 
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
 
@@ -246,6 +249,33 @@ OPTION_TAGS = typer.Option(
     metavar="key=value|@file",
     help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
 )
+OPTION_RESERVE: bool = typer.Option(
+    False,
+    help="Reserve machine after testing, similarly to the `reserve` command.",
+    rich_help_panel=REQUEST_PANEL_RESERVE,
+)
+
+
+def _option_autoconnect(panel: str) -> bool:
+    return typer.Option(True, help="Automatically connect to the guest via SSH.", rich_help_panel=panel)
+
+
+def _option_ssh_public_keys(panel: str) -> List[str]:
+    return typer.Option(
+        ["~/.ssh/*.pub"],
+        "--ssh-public-key",
+        help="Path to SSH public key(s) used to connect. Supports globbing.",
+        rich_help_panel=panel,
+    )
+
+
+def _option_reservation_duration(panel: str) -> int:
+    return typer.Option(
+        settings.DEFAULT_RESERVATION_DURATION,
+        "--duration",
+        help="Set the reservation duration in minutes. By default the reservation is for 30 minutes.",
+        rich_help_panel=panel,
+    )
 
 
 def _generate_tmt_extra_args(step: str) -> Optional[List[str]]:
@@ -257,6 +287,165 @@ def _generate_tmt_extra_args(step: str) -> Optional[List[str]]:
         ),
         rich_help_panel=REQUEST_PANEL_TMT,
     )
+
+
+def _sanity_reserve() -> None:
+    """
+    Sanity checks for reservation support.
+    """
+
+    # Check of SSH_AUTH_SOCK is defined
+    ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
+    if not ssh_auth_sock:
+        exit_error(
+            "No 'ssh-agent' seems to be running, it is required for reservations to work, cannot continue.\n"
+            "SSH_AUTH_SOCK is not defined, make sure the ssh-agent is running by executing 'eval `ssh-agent`'."
+        )
+
+    # Check if SSH_AUTH_SOCK exists
+    if not os.path.exists(ssh_auth_sock):
+        exit_error(
+            "SSH_AUTH_SOCK socket does not exist, make sure the ssh-agent is running by executing 'eval `ssh-agent`'."
+        )
+
+    # Check if value of SSH_AUTH_SOCK is socket
+    if not stat.S_ISSOCK(os.stat(ssh_auth_sock).st_mode):
+        exit_error("SSH_AUTH_SOCK is not a socket, make sure the ssh-agent is running by executing 'eval `ssh-agent`'.")
+
+    # Check if ssh-add -L is not empty
+    ssh_add_output = subprocess.run(["ssh-add", "-L"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if ssh_add_output.returncode != 0:
+        exit_error("No SSH identities found in the SSH agent. Please run `ssh-add`.")
+
+
+def _handle_reservation(session, request_id: str, autoconnect: bool = False) -> None:
+    """
+    Handle the reservation for :py:func:``request`` and :py:func:``restart`` commands.
+    """
+    # Get artifacts url
+    request_url = urllib.parse.urljoin(settings.API_URL, f"/v0.1/requests/{request_id}")
+    response = session.get(request_url)
+    artifacts_url = response.json()['run']['artifacts']
+
+    try:
+        pipeline_log = session.get(f"{artifacts_url}/pipeline.log").text
+
+        if not pipeline_log:
+            exit_error(f"Pipeline log was empty. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    except requests.exceptions.SSLError:
+        exit_error(
+            textwrap.dedent(
+                f"""
+            Failed to access Testing Farm artifacts because of SSL validation error.
+            If you use Red Hat Ranch please make sure you have Red Hat CA certificates installed.
+            Otherwise file an issue to {settings.ISSUE_TRACKER}.
+        """
+            )
+        )
+        return
+
+    except requests.exceptions.ConnectionError:
+        exit_error(
+            textwrap.dedent(
+                f"""
+            Failed to access Testing Farm artifacts.
+            If you use Red Hat Ranch please make sure you are connected to the VPN.
+            Otherwise file an issue to {settings.ISSUE_TRACKER}.
+        """
+            )
+        )
+        return
+
+    # match any hostname or IP address from gluetool modules log
+    guests = re.findall(r'Guest is ready.*root@([\d\w\.-]+)', pipeline_log)
+
+    if not guests:
+        exit_error(
+            textwrap.dedent(
+                f"""
+            No guests found to connect to. This is unexpected, please file an issue
+            to {settings.ISSUE_TRACKER}.
+        """
+            )
+        )
+
+    if len(guests) > 1:
+        for guest in guests:
+            console.print(f"🌎 ssh root@{guest}")
+        return
+    else:
+        console.print(f"🌎 ssh root@{guests[0]}")
+
+    if autoconnect:
+        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guests[0]}")  # noqa: E501
+
+
+def _localhost_ingress_rule(session: requests.Session) -> str:
+    try:
+        get_ip = session.get(settings.PUBLIC_IP_CHECKER_URL)
+    except requests.exceptions.RequestException as err:
+        exit_error(f"Could not get workstation ip to form a security group rule: {err}")
+
+    if get_ip.ok:
+        ip = get_ip.text.strip()
+        return f"-1:{ip}:-1"
+
+    else:
+        exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
+
+
+def _add_reservation(ssh_public_keys: List[str], rules: Dict[str, Any], duration: int, environment: Dict[str, Any]):
+    """
+    Add discovery of the reservation test to the given environment.
+    """
+    authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
+    if not authorized_keys:
+        exit_error(f"No public SSH keys found under {', '.join(ssh_public_keys)}, cannot continue.")
+
+    authorized_keys_bytes = base64.b64encode(authorized_keys)
+
+    if "secrets" not in environment or environment["secrets"] is None:
+        environment["secrets"] = {}
+
+    environment["secrets"].update({"TF_RESERVATION_AUTHORIZED_KEYS_BASE64": authorized_keys_bytes.decode("utf-8")})
+
+    if "settings" not in environment or environment["settings"] is None:
+        environment["settings"] = {}
+
+    if "provisioning" not in environment["settings"] or environment["settings"]["provisioning"] is None:
+        environment["settings"]["provisioning"] = {}
+
+    environment["settings"]["provisioning"].update(rules)
+
+    if "variables" not in environment or environment["variables"] is None:
+        environment["variables"] = {}
+
+    environment["variables"].update({"TF_RESERVATION_DURATION": str(duration)})
+
+    if "tmt" not in environment or environment["tmt"] is None:
+        environment["tmt"] = {"extra_args": {}}
+
+    if "extra_args" not in environment["tmt"] or environment["tmt"]["extra_args"] is None:
+        environment["tmt"]["extra_args"] = {}
+
+    if "discover" not in environment["tmt"]["extra_args"] or environment["tmt"]["extra_args"]["discover"] is None:
+        environment["tmt"]["extra_args"]["discover"] = []
+
+    # add reservation if not already present
+    if RESERVE_TMT_DISCOVER_EXTRA_ARGS not in environment["tmt"]["extra_args"]["discover"]:
+        environment["tmt"]["extra_args"]["discover"].append(RESERVE_TMT_DISCOVER_EXTRA_ARGS)
+
+
+def _contains_compose(environments: List[Dict[str, Any]]):
+    """
+    Returns true if any of environments has ``os.compose`` defined.
+    """
+    for environment in environments:
+        if "os" in environment and environment["os"]:
+            if "compose" in environment["os"] and environment["os"]["compose"]:
+                return True
+    return False
 
 
 # NOTE(ivasilev) Largely borrowed from artemis-cli
@@ -464,6 +653,8 @@ def watch(
     id: str = typer.Option(..., help="Request ID to watch"),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     format: Optional[WatchFormat] = typer.Option(WatchFormat.text, help="Output format"),
+    autoconnect: bool = typer.Option(True, hidden=True),
+    reserve: bool = typer.Option(False, hidden=True),
 ):
     def _console_print(*args, **kwargs):
         """A helper function that will skip printing to console if output format is json"""
@@ -490,6 +681,24 @@ def watch(
     session = requests.Session()
     install_http_retries(session)
 
+    def _is_reserved(session, request):
+        artifacts_url = (request.get('run') or {}).get('artifacts')
+
+        if not artifacts_url:
+            return False
+
+        try:
+            workdir = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts_url}/results.xml").text)
+        except requests.exceptions.SSLError:
+            exit_error("Artifacts unreachable via SSL, do you have RH CA certificates installed?[/yellow]")
+
+        if workdir:
+            # finish early if reservation is running
+            if re.search(r"\[\+\] Reservation tick:", session.get(f"{workdir.group(1)}/log.txt").text):
+                return True
+
+        return False
+
     while True:
         try:
             response = session.get(get_url)
@@ -509,6 +718,11 @@ def watch(
         state = request["state"]
 
         if state == current_state:
+            # check for reservation status and finish early if reserved
+            if reserve and _is_reserved(session, request):
+                _handle_reservation(session, request["id"], autoconnect)
+                return
+
             time.sleep(1)
             continue
 
@@ -571,7 +785,7 @@ def version():
 def request(
     api_url: str = ARGUMENT_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
-    timeout: Optional[int] = typer.Option(
+    timeout: int = typer.Option(
         DEFAULT_PIPELINE_TIMEOUT,
         help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.",
     ),
@@ -659,6 +873,10 @@ def request(
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
+    reserve: bool = OPTION_RESERVE,
+    ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
+    autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
+    reservation_duration: int = _option_reservation_duration(REQUEST_PANEL_RESERVE),
 ):
     """
     Request testing from Testing Farm.
@@ -687,6 +905,9 @@ def request(
 
         git_url = str(settings.TESTING_FARM_TESTS_GIT_URL)
         tmt_plan_name = str(settings.TESTING_FARM_SANITY_PLAN)
+
+    if reserve:
+        _sanity_reserve()
 
     # resolve git repository details from the current repository
     if not git_url:
@@ -830,6 +1051,27 @@ def request(
 
         environments.append(environment)
 
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    if reserve:
+        if not _contains_compose(environments):
+            exit_error("Reservations are not supported with container executions, cannot continue")
+
+        if len(environments) > 1:
+            exit_error("Reservations are currently supported for a single plan, cannot continue")
+
+        rules = _parse_security_group_rules([_localhost_ingress_rule(session)], [])
+
+        for environment in environments:
+            _add_reservation(
+                ssh_public_keys=ssh_public_keys, rules=rules, duration=reservation_duration, environment=environment
+            )
+
+        machine_pre = "Machine" if len(environments) == 1 else str(len(environments)) + " machines"
+        console.print(f"🛟 {machine_pre} will be reserved after testing")
+
     if any(
         provisioning_detail
         for provisioning_detail in [
@@ -873,7 +1115,18 @@ def request(
 
     request["environments"] = environments
     request["settings"] = {}
-    request["settings"]["pipeline"] = {"timeout": timeout}
+
+    if reserve or pipeline_type or parallel_limit:
+        request["settings"]["pipeline"] = {}
+
+    # in case the reservation duration is more than the pipeline timeout, adjust also the pipeline timeout
+    if reserve:
+        if reservation_duration > timeout:
+            request["settings"]["pipeline"] = {"timeout": reservation_duration}
+            console.print(f"⏳ Maximum reservation time is {reservation_duration} minutes")
+        else:
+            request["settings"]["pipeline"] = {"timeout": timeout}
+            console.print(f"⏳ Maximum reservation time is {timeout} minutes")
 
     if pipeline_type:
         request["settings"]["pipeline"]["type"] = pipeline_type.value
@@ -896,14 +1149,10 @@ def request(
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 
-    # Setting up retries
-    session = requests.Session()
-    install_http_retries(session)
-
     # dry run
     if dry_run:
         console.print("🔍 Dry run, showing POST json only", style="bright_yellow")
-        print(json.dumps(request, indent=4, separators=(',', ': ')))
+        print_json(json.dumps(request, indent=4, separators=(',', ': ')))
         raise typer.Exit()
 
     # handle errors
@@ -921,8 +1170,10 @@ def request(
         print(response.text)
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
-    # watch
-    watch(api_url, response.json()['id'], no_wait, format=WatchFormat.text)
+    request_id = response.json()['id']
+
+    # Watch the request and handle reservation
+    watch(api_url, request_id, no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text)
 
 
 def restart(
@@ -962,6 +1213,10 @@ def restart(
     dry_run: bool = OPTION_DRY_RUN,
     pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
+    reserve: bool = OPTION_RESERVE,
+    ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
+    autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
+    reservation_duration: int = _option_reservation_duration(REQUEST_PANEL_RESERVE),
 ):
     """
     Restart a Testing Farm request.
@@ -1135,6 +1390,27 @@ def restart(
 
             environment["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
 
+    if reserve:
+        if not _contains_compose(request["environments"]):
+            exit_error("Reservations are not supported with container executions, cannot continue")
+
+        if len(request["environments"]) > 1:
+            exit_error("Reservations are currently supported for a single plan, cannot continue")
+
+        rules = _parse_security_group_rules([_localhost_ingress_rule(session)], [])
+
+        for environment in request["environments"]:
+            _add_reservation(
+                ssh_public_keys=ssh_public_keys, rules=rules, duration=reservation_duration, environment=environment
+            )
+
+        machine_pre = (
+            "Machine" if len(request["environments"]) == 1 else str(len(request["environments"])) + " machines"
+        )
+        console.print(
+            f"🕗 {machine_pre} will be reserved after testing for [blue]{str(reservation_duration)}[/blue] minutes"
+        )
+
     # dry run
     if dry_run:
         console.print("🔍 Dry run, showing POST json only", style="bright_yellow")
@@ -1160,7 +1436,9 @@ def restart(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     # watch
-    watch(str(api_url), response.json()['id'], no_wait, format=WatchFormat.text)
+    watch(
+        str(api_url), response.json()['id'], no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text
+    )
 
 
 def run(
@@ -1322,18 +1600,8 @@ def run(
 
 
 def reserve(
-    ssh_public_keys: List[str] = typer.Option(
-        ["~/.ssh/*.pub"],
-        "--ssh-public-key",
-        help="Path to SSH public key(s) used to connect. Supports globbing.",
-        rich_help_panel=RESERVE_PANEL_GENERAL,
-    ),
-    reservation_duration: int = typer.Option(
-        30,
-        "--duration",
-        help="Set the reservation duration in minutes. By default the reservation is for 30 minutes.",
-        rich_help_panel=RESERVE_PANEL_GENERAL,
-    ),
+    ssh_public_keys: List[str] = _option_ssh_public_keys(RESERVE_PANEL_GENERAL),
+    reservation_duration: int = _option_reservation_duration(RESERVE_PANEL_GENERAL),
     arch: str = typer.Option(
         "x86_64", help="Hardware platform of the system to be provisioned.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
     ),
@@ -1358,9 +1626,7 @@ def reserve(
         help="Output only the request ID.",
         rich_help_panel=RESERVE_PANEL_OUTPUT,
     ),
-    autoconnect: bool = typer.Option(
-        True, help="Automatically connect to the guest via SSH.", rich_help_panel=RESERVE_PANEL_GENERAL
-    ),
+    autoconnect: bool = _option_autoconnect(RESERVE_PANEL_GENERAL),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
     security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
@@ -1379,27 +1645,7 @@ def reserve(
         if not print_only_request_id:
             console.print(message)
 
-    # Sanity checks for ssh-agent
-
-    # Check of SSH_AUTH_SOCK is defined
-    ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
-    if not ssh_auth_sock:
-        exit_error("SSH_AUTH_SOCK is not defined, make sure the ssh-agent is running by executing 'eval `ssh-agent`'.")
-
-    # Check if SSH_AUTH_SOCK exists
-    if not os.path.exists(ssh_auth_sock):
-        exit_error(
-            "SSH_AUTH_SOCK socket does not exist, make sure the ssh-agent is running by executing 'eval `ssh-agent`'."
-        )
-
-    # Check if value of SSH_AUTH_SOCK is socket
-    if not stat.S_ISSOCK(os.stat(ssh_auth_sock).st_mode):
-        exit_error("SSH_AUTH_SOCK is not a socket, make sure the ssh-agent is running by executing 'eval `ssh-agent`'.")
-
-    # Check if ssh-add -L is not empty
-    ssh_add_output = subprocess.run(["ssh-add", "-L"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if ssh_add_output.returncode != 0:
-        exit_error("No SSH identities found in the SSH agent. Please run `ssh-add`.")
+    _sanity_reserve()
 
     # check for token
     if not settings.API_TOKEN:
@@ -1467,20 +1713,14 @@ def reserve(
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
     if not skip_workstation_access or security_group_rule_ingress or security_group_rule_egress:
         ingress_rules = security_group_rule_ingress or []
         if not skip_workstation_access:
-            try:
-                get_ip = requests.get(settings.PUBLIC_IP_CHECKER_URL)
-            except requests.exceptions.RequestException as err:
-                exit_error(f"Could not get workstation ip to form a security group rule: {err}")
-
-            if get_ip.ok:
-                ip = get_ip.text.strip()
-                ingress_rules.append(f'-1:{ip}:-1')  # noqa: E231
-
-            else:
-                exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
+            ingress_rules.append(_localhost_ingress_rule(session))
 
         rules = _parse_security_group_rules(ingress_rules, security_group_rule_egress or [])
         environment["settings"]["provisioning"].update(rules)
@@ -1491,10 +1731,6 @@ def reserve(
     authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
     if not authorized_keys:
         exit_error(f"No public SSH keys found under {', '.join(ssh_public_keys)}, cannot continue.")
-
-    # check for ssh-agent, we require it for a pleasant usage
-    if not os.getenv('SSH_AUTH_SOCK'):
-        exit_error("No 'ssh-agent' seems to be running, it is required for reservations to work, cannot continue.")
 
     authorized_keys_bytes = base64.b64encode(authorized_keys)
     environment["secrets"] = {"TF_RESERVATION_AUTHORIZED_KEYS_BASE64": authorized_keys_bytes.decode("utf-8")}
@@ -1520,10 +1756,6 @@ def reserve(
 
     # submit request to Testing Farm
     post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
-
-    # Setting up retries
-    session = requests.Session()
-    install_http_retries(session)
 
     # dry run
     if dry_run:

@@ -17,6 +17,8 @@ settings = LazySettings(
     WATCH_TICK=3,
     DEFAULT_API_TIMEOUT=10,
     DEFAULT_API_RETRIES=7,
+    # default reservation duration in minutes
+    DEFAULT_RESERVATION_DURATION=30,
     # should lead to delays of 0.5, 1, 2, 4, 8, 16, 32 seconds
     DEFAULT_RETRY_BACKOFF_FACTOR=1,
     # system CA certificates path, default for RHEL variants
@@ -24,5 +26,5 @@ settings = LazySettings(
     # Testing Farm sanity test,
     TESTING_FARM_TESTS_GIT_URL="https://gitlab.com/testing-farm/tests",
     TESTING_FARM_SANITY_PLAN="/testing-farm/sanity",
-    PUBLIC_IP_CHECKER_URL="http://icanhazip.com",
+    PUBLIC_IP_CHECKER_URL="https://ipv4.icanhazip.com",
 )

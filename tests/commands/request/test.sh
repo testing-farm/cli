@@ -10,6 +10,17 @@ TEST_DATA=$PWD/data
 TMPDIR=$(mktemp -d)
 pushd $TMPDIR
 
+# temporary ssh setup
+HOME=$PWD
+export HOME
+mkdir "$HOME/.ssh"
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    eval "$(ssh-agent)"
+    SSH_KEY=$(mktemp -u -p "$HOME/.ssh")
+    ssh-keygen -t rsa -q -f "$SSH_KEY" -N ""
+    ssh-add "$SSH_KEY"
+fi
+
 # no token
 testinfo "no token specified"
 testing-farm request | tee output
@@ -314,6 +325,31 @@ testinfo "test multiple network types with same type"
 testing-farm request --dry-run --compose Fedora --hardware network.type='eth' --hardware network.type='eth' | tee output
 tail -n+4 output | jq -r '.environments[].hardware.network[0].type' | egrep '^eth$'
 tail -n+4 output | jq -r '.environments[].hardware.network[1].type' | egrep '^eth$'
+
+# reserve
+testing-farm request --dry-run --reserve | tee output
+egrep "⛔ Reservations are not supported with container executions, cannot continue" output
+
+testing-farm request --dry-run --reserve --arch x86_64,s390x --compose Fedora-40 | tee output
+egrep "⛔ Reservations are currently supported for a single plan, cannot continue" output
+
+testing-farm request --dry-run --reserve --compose Fedora-40 | tee output
+egrep "🛟 Machine will be reserved after testing" output
+egrep "⏳ Maximum reservation time is 720 minutes" output
+tail -n+6 output | jq -r .environments[].tmt.extra_args.discover[] | egrep "^--insert --how fmf --url https://gitlab.com/testing-farm/tests --ref main --test /testing-farm/reserve-system$"
+tail -n+6 output | jq -r .settings.pipeline.timeout | egrep "^720$"
+tail -n+6 output | jq -r .environments[].settings.provisioning.security_group_rules_egress | egrep "^\[\]$"
+tail -n+6 output | jq -r '[.environments[].settings.provisioning.security_group_rules_ingress[] | (.type, .protocol, .cidr, .port_min, .port_max)] | @csv' | \
+    egrep "^\"ingress\",\"-1\",\"$(curl -s ipv4.icanhazip.com)/32\",0,65535$"
+tail -n+6 output | jq -r '.environments[].secrets | has("TF_RESERVATION_AUTHORIZED_KEYS_BASE64")' | egrep "^true$"
+tail -n+6 output | jq -r .environments[].variables.TF_RESERVATION_DURATION | egrep "^30$"
+
+testing-farm request --dry-run --reserve --compose Fedora-40 --duration 1800 --no-autoconnect | tee output
+tail -n+6 output | jq -r .settings.pipeline.timeout | egrep "^1800$"
+tail -n+6 output | jq -r .environments[].variables.TF_RESERVATION_DURATION | egrep "^1800$"
+
+testing-farm request --dry-run --reserve --compose Fedora-40 --ssh-public-key "${SSH_KEY}.pub" | tee output
+tail -n+6 output | jq -r .environments[].secrets.TF_RESERVATION_AUTHORIZED_KEYS_BASE64 | egrep "^$(base64 -w0 < ${SSH_KEY}.pub)$"
 
 # remove temporary directory
 rm -rf $TMPDIR

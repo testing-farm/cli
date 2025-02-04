@@ -83,3 +83,7 @@ for step in discover prepare finish; do
   testing-farm restart --tmt-$step args --tmt-$step args https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
   egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
 done
+
+# reserve
+testing-farm restart --reserve --duration 1800 --no-autoconnect --ssh-public-key ${SSH_KEY}.pub https://api.dev.testing-farm.io/v0.1/request/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output

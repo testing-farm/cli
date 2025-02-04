@@ -247,6 +247,17 @@ OPTION_TAGS = typer.Option(
 )
 
 
+def _generate_tmt_extra_args(step: str) -> Optional[List[str]]:
+    return typer.Option(
+        None,
+        help=(
+            f"Additional options passed to the \"{step}\" step. "
+            "Can be specified multiple times for multiple additions."
+        ),
+        rich_help_panel=REQUEST_PANEL_TMT,
+    )
+
+
 # NOTE(ivasilev) Largely borrowed from artemis-cli
 def _parse_security_group_rules(ingress_rules: List[str], egress_rules: List[str]) -> Dict[str, Any]:
     """
@@ -644,6 +655,9 @@ def request(
         None, help="URL of the icon of the user's webpage. It will be shown in the results viewer."
     ),
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
+    tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
+    tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
 ):
     """
     Request testing from Testing Farm.
@@ -800,6 +814,19 @@ def request(
         if tmt_environment:
             environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
 
+        if tmt_discover or tmt_prepare or tmt_finish:
+            if "extra_args" not in environment["tmt"]:
+                environment["tmt"]["extra_args"] = {}
+
+        if tmt_discover:
+            environment["tmt"]["extra_args"]["discover"] = tmt_discover
+
+        if tmt_prepare:
+            environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+        if tmt_finish:
+            environment["tmt"]["extra_args"]["finish"] = tmt_finish
+
         environments.append(environment)
 
     if any(
@@ -924,7 +951,10 @@ def restart(
     tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
     tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
     tmt_test_filter: Optional[str] = OPTION_TMT_TEST_FILTER,
-    tmt_path: str = OPTION_TMT_PATH,
+    tmt_path: Optional[str] = OPTION_TMT_PATH,
+    tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
+    tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = OPTION_DRY_RUN,
@@ -1036,6 +1066,25 @@ def restart(
         console.print(f"💻 forcing pool [blue]{pool}[/blue]")
         for environment in request['environments']:
             environment["pool"] = pool
+
+    if tmt_discover or tmt_prepare or tmt_finish:
+        for environment in request["environments"]:
+            if "tmt" not in environment:
+                environment["tmt"] = {"extra_args": {}}
+            if "extra_args" not in environment["tmt"]:
+                environment["tmt"]["extra_args"] = {}
+
+    if tmt_discover:
+        for environment in request["environments"]:
+            environment["tmt"]["extra_args"]["discover"] = tmt_discover
+
+    if tmt_prepare:
+        for environment in request["environments"]:
+            environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+    if tmt_finish:
+        for environment in request["environments"]:
+            environment["tmt"]["extra_args"]["finish"] = tmt_finish
 
     test_type = "fmf" if "fmf" in request["test"] else "sti"
 

@@ -76,3 +76,10 @@ egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/on
 testinfo "test tags"
 testing-farm restart --tag ArtemisUseSpot=false -t Business=TestingFarm https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+
+# tmt extra args, just test it is accepted
+for step in discover prepare finish; do
+  testinfo "tmt extra args - $step"
+  testing-farm restart --tmt-$step args --tmt-$step args https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+  egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+done

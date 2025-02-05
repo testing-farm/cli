@@ -16,6 +16,27 @@ Currently the CLI supports:
 
 == Installation
 
+=== Copr
+The `testing-farm` cli is available as a RPM package in copr repository.
+
+For released versions, enable the `stable` copr repository.
+[source,shell]
+....
+dnf copr enable @testing-farm/stable
+....
+
+To preview the latest changes merged to `main` branch, enable the `latest` copr repository.
+[source,shell]
+....
+dnf copr enable @testing-farm/latest
+....
+
+Install `testing-farm` cli via `dnf`.
+[source,shell]
+....
+dnf install testing-farm
+....
+
 === Container
 
 You can run the tool using the official image via a small wrapper script.

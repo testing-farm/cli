@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 import pkg_resources
 import requests
 import typer
+from click.core import ParameterSource  # pyre-ignore[21]
 from rich import print
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -925,6 +926,7 @@ def request(
 
 
 def restart(
+    context: typer.Context,
     request_id: str = typer.Argument(..., help="Testing Farm request ID or a string containing it."),
     api_url: str = ARGUMENT_API_URL,
     internal_api_url: str = typer.Argument(
@@ -1099,7 +1101,9 @@ def restart(
         request["test"][test_type]["plan_filter"] = tmt_plan_filter
 
     if test_type == "fmf":
-        request["test"][test_type]["path"] = tmt_path
+        # The method explained in https://github.com/fastapi/typer/discussions/668
+        if context.get_parameter_source("tmt_path") == ParameterSource.COMMANDLINE:  # pyre-ignore[16]
+            request["test"][test_type]["path"] = tmt_path
 
     # worker image
     if worker_image:

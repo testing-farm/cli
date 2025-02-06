@@ -69,10 +69,29 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
         if not path or not value:
             exit_error(f"cannot parse hardware constraint `{raw_constraint}`")
 
+        path_splitted = path.split('.')
+        first_key = path_splitted[0]
+
+        # Special handling for network and disk as they are lists
+        if first_key in ("network", "disk"):
+            if first_key not in constraints:
+                constraints[first_key] = []
+
+            if len(path_splitted) > 1:
+                new_dict = {}
+                current = new_dict
+                # Handle all nested levels except the last one
+                for key in path_splitted[1:-1]:
+                    current[key] = {}
+                    current = current[key]
+                # Set the final value
+                current[path_splitted[-1]] = value
+                constraints[first_key].append(new_dict)
+            continue
+
         # Walk the path, step by step, and initialize containers along the way. The last step is not
         # a name of another nested container, but actually a name in the last container.
         container: Any = constraints
-        path_splitted = path.split('.')
 
         while len(path_splitted) > 1:
             step = path_splitted.pop(0)
@@ -91,9 +110,7 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
             value_mixed = False
 
         container[path_splitted.pop()] = value_mixed
-
-    # automatically convert disk and network values to a list, as the standard requires
-    return {key: value if key not in ("disk", "network") else [value] for key, value in constraints.items()}
+    return constraints
 
 
 def options_from_file(filepath) -> Dict[str, str]:

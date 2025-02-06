@@ -303,5 +303,17 @@ tail -n+4 output | jq -r .environments[].tmt.extra_args.prepare[] | egrep "^prep
 tail -n+4 output | jq -r .environments[].tmt.extra_args.discover[] | egrep "^discover-args$"
 tail -n+4 output | jq -r .environments[].tmt.extra_args.finish[] | egrep "^finish-args$"
 
+# test multiple network types
+testinfo "test multiple network types"
+testing-farm request --dry-run --compose Fedora --hardware network.type='eth1' --hardware network.type='eth2' | tee output
+tail -n+4 output | jq -r '.environments[].hardware.network[0].type' | egrep '^eth1$'
+tail -n+4 output | jq -r '.environments[].hardware.network[1].type' | egrep '^eth2$'
+
+# test multiple network types with same type
+testinfo "test multiple network types with same type"
+testing-farm request --dry-run --compose Fedora --hardware network.type='eth' --hardware network.type='eth' | tee output
+tail -n+4 output | jq -r '.environments[].hardware.network[0].type' | egrep '^eth$'
+tail -n+4 output | jq -r '.environments[].hardware.network[1].type' | egrep '^eth$'
+
 # remove temporary directory
 rm -rf $TMPDIR

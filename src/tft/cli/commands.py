@@ -1732,3 +1732,74 @@ def cancel(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     console.print("✅ Request [yellow]cancellation requested[/yellow]. It will be canceled soon.")
+
+
+def encrypt(
+    message: str = typer.Argument(..., help="Message to be encrypted."),
+    api_url: str = ARGUMENT_API_URL,
+    api_token: str = ARGUMENT_API_TOKEN,
+    git_url: Optional[str] = typer.Option(
+        None,
+        help="URL of a GIT repository to which the secret will be tied. If not set, it is detected from the current "
+        "git repository.",
+    ),
+    token_id: Optional[str] = typer.Option(
+        None,
+        help="Token ID to which the secret will be tied. If not set, Token ID will be detected from provided Token.",
+    ),
+):
+    """
+    Create secrets for use in in-repository configuration.
+    """
+
+    # check for token
+    if not api_token:
+        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
+
+    git_available = bool(shutil.which("git"))
+
+    # resolve git repository details from the current repository
+    if not git_url:
+        if not git_available:
+            exit_error("no git url defined")
+        git_url = cmd_output_or_exit("git remote get-url origin", "could not auto-detect git url")
+        # use https instead git when auto-detected
+        # GitLab: git@github.com:containers/podman.git
+        # GitHub: git@gitlab.com:testing-farm/cli.git, git+ssh://git@gitlab.com/spoore/centos_rpms_jq.git
+        # Pagure: ssh://git@pagure.io/fedora-ci/messages.git
+        assert git_url
+        git_url = re.sub(r"^(?:(?:git\+)?ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
+
+    payload = {'url': git_url, 'message': message}
+
+    if token_id:
+        payload['token_id'] = token_id
+        console_stderr.print(f'🔒 Encrypting secret for token id {token_id} for repository {git_url}')
+    else:
+        console_stderr.print(f'🔒 Encrypting secret for your token in repo {git_url}')
+
+    # submit request to Testing Farm
+    post_url = urllib.parse.urljoin(api_url, "/v0.1/secrets/encrypt")
+
+    session = requests.Session()
+    response = session.post(post_url, json=payload, headers={'Authorization': f'Bearer {api_token}'})
+
+    # handle errors
+    if response.status_code == 401:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code == 400:
+        exit_error(
+            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
+        )
+
+    if response.status_code != 200:
+        console_stderr.print(response.text)
+        exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
+
+    console_stderr.print(
+        "💡 See https://docs.testing-farm.io/Testing%20Farm/0.1/test-request.html#secrets-in-repo-config for more "
+        "information on how to store the secret in repository."
+    )
+    console.print(response.text)

@@ -1,5 +1,5 @@
 # build image
-FROM python:3.9.10-alpine
+FROM python:3.9-alpine
 
 # Set home
 ENV HOME=/root

@@ -16,14 +16,17 @@ prepare:
     how: install
     package:
       - git
-      - netcat
+      - netcat-openbsd
       - jq
 
 adjust:
   prepare:
-    how: shell
-    script: apk add jq netcat-openbsd
-  when: distro = alpine
+    how: install
+    package:
+      - git
+      - netcat
+      - jq
+  when: distro = fedora
 
 execute:
   how: tmt

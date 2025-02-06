@@ -30,7 +30,7 @@ pre-commit:  ## Run pre-commit on all files
 
 tmt:  ## Run available tmt tests
 	tmt clean runs -i tft-cli
-	-tmt $(TMT_CONTEXT) run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
+	-tmt $(TMT_CONTEXT) --feeling-safe run -e IMAGE_TAG=$(IMAGE_TAG) -i tft-cli $(TMT_RUN_ARGS)
 	tmt run -i tft-cli report -vvv
 
 tox:  ## Run tox based tests
@@ -65,4 +65,4 @@ clean:  ## Cleanup
 reverse = $(if $(1),$(call reverse,$(wordlist 2,$(words $(1)),$(1)))) $(firstword $(1))
 
 help: .FORCE  ## Show this help
-	@!source /run/.containerenv; echo $imageawk 'BEGIN {FS = ":.*##"; printf "$(info $(PRELUDE))"} /^[a-zA-Z_/-]+:.*?##/ { printf "  \033[36m%-35s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(call reverse, $(MAKEFILE_LIST))
+	@awk 'BEGIN {FS = ":.*##"; printf "$(info $(PRELUDE))"} /^[a-zA-Z_/-]+:.*?##/ { printf "  \033[36m%-35s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(call reverse, $(MAKEFILE_LIST))

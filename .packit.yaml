@@ -3,11 +3,14 @@
 
 specfile_path: cli.spec
 
-# name in upstream package repository or registry (e.g. in PyPI)
+# Name in upstream package repository or registry (e.g. in PyPI)
 upstream_package_name: tft-cli
 
 # Strip starting 'v' from our git tags
 upstream_tag_template: v{version}
+
+# Disable osh scan
+osh_diff_scan_after_copr_build: false
 
 targets:
   - fedora-all

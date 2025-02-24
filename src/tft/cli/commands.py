@@ -2035,3 +2035,44 @@ def encrypt(
         "information on how to store the secret in repository."
     )
     console.print(response.text)
+
+
+def list_requests(
+    api_url: str = ARGUMENT_API_URL,
+    api_token: str = ARGUMENT_API_TOKEN,
+):
+    get_url = urllib.parse.urljoin(api_url, "/v0.1/requests?limit=50")
+
+    # Setting up retries
+    session = requests.Session()
+    install_http_retries(session)
+
+    response = session.get(get_url, headers=_get_headers(api_token))
+
+    table = Table(show_header=True)
+    table.add_column('Links')
+    table.add_column('Request ID')
+    table.add_column('State')
+    table.add_column('Result')
+    table.add_column('Created')
+    table.add_column('Git URL')
+    table.add_column('Plan')
+    table.add_column('Ref')
+
+    for request in response.json():
+        api_link = urllib.parse.urljoin(api_url, f"/v0.1/requests/{request['id']}")
+        artifacts_link = request['run']['artifacts'] if request['run'] else ''
+        request_test = request['test']['fmf'] or request['test']['sti']
+        request_test_plan = request_test['name'] if 'name' in request_test else str(request_test['playbooks'])
+        table.add_row(
+            f'[link={api_link}]API[/link]' + (f' [link={artifacts_link}]Artifacts[/link]' if artifacts_link else ''),
+            request['id'],
+            request['state'],
+            request['result']['overall'] if request['result'] else None,
+            request['created'],
+            request_test['url'],
+            request_test_plan,
+            request_test['ref'],
+        )
+
+    console.print(table)

@@ -18,6 +18,7 @@ app.command()(commands.run)
 app.command()(commands.version)
 app.command()(commands.watch)
 app.command()(commands.encrypt)
+app.command()(commands.list_requests)
 
 # This command is available only for the container based deployment
 if os.path.exists(settings.CONTAINER_SIGN):

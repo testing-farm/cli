@@ -29,7 +29,7 @@ if [ "$1" == "update" ]; then
 fi
 
 # mount SSH public keys in case of reservations
-if [ "$1" == "reserve" ] || grep -q "--reserve" <<< "$*"; then
+if [ "$1" == "reserve" ] || grep -q -e "--reserve" <<< "$*"; then
     if grep -q -- '--ssh-public-key' <<< "$*"; then
         echo "Option '--ssh-public-key' is not supported with container installation. Use the default settings please."
         exit 255

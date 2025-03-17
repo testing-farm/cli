@@ -29,13 +29,15 @@ if [ "$1" == "update" ]; then
 fi
 
 # mount SSH public keys in case of reservations
-if [ "$1" == "reserve" ] || grep -q -e "--reserve" <<< "$*"; then
+if ! grep -q -e "--help" <<< "$*" && ([ "$1" == "reserve" ] || grep -q -e "--reserve" <<< "$*"); then
     if grep -q -- '--ssh-public-key' <<< "$*"; then
         echo "Option '--ssh-public-key' is not supported with container installation. Use the default settings please."
         exit 255
     fi
     if [ -z "$SSH_AUTH_SOCK" -o ! -e "$SSH_AUTH_SOCK" ]; then
-        echo "Could not detect a running ssh-agent, cannot continue."
+        echo "Error: Could not detect a running ssh-agent, cannot continue."
+        echo
+        echo "See https://docs.testing-farm.io/Testing%20Farm/0.1/cli.html#reserve-ssh-agent for more information."
         exit 255
     fi
     if [ ! -d "$HOME/.ssh" ]; then

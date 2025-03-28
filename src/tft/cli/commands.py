@@ -278,6 +278,14 @@ def _option_reservation_duration(panel: str) -> int:
     )
 
 
+def _option_debug_reservation(panel: Optional[str] = None) -> bool:
+    return typer.Option(
+        False,
+        help="Enable debug messages in the reservation code. Useful for testing changes to reservation code.",
+        rich_help_panel=panel,
+    )
+
+
 def _generate_tmt_extra_args(step: str) -> Optional[List[str]]:
     return typer.Option(
         None,
@@ -395,7 +403,13 @@ def _localhost_ingress_rule(session: requests.Session) -> str:
         exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
 
 
-def _add_reservation(ssh_public_keys: List[str], rules: Dict[str, Any], duration: int, environment: Dict[str, Any]):
+def _add_reservation(
+    ssh_public_keys: List[str],
+    rules: Dict[str, Any],
+    duration: int,
+    environment: Dict[str, Any],
+    debug_reservation: bool,
+):
     """
     Add discovery of the reservation test to the given environment.
     """
@@ -422,6 +436,9 @@ def _add_reservation(ssh_public_keys: List[str], rules: Dict[str, Any], duration
         environment["variables"] = {}
 
     environment["variables"].update({"TF_RESERVATION_DURATION": str(duration)})
+
+    if debug_reservation:
+        environment["variables"].update({"TF_RESERVATION_DEBUG": "1"})
 
     if "tmt" not in environment or environment["tmt"] is None:
         environment["tmt"] = {"extra_args": {}}
@@ -877,6 +894,7 @@ def request(
     ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
     autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
     reservation_duration: int = _option_reservation_duration(REQUEST_PANEL_RESERVE),
+    debug_reservation: bool = _option_debug_reservation(REQUEST_PANEL_RESERVE),
 ):
     """
     Request testing from Testing Farm.
@@ -1066,7 +1084,11 @@ def request(
 
         for environment in environments:
             _add_reservation(
-                ssh_public_keys=ssh_public_keys, rules=rules, duration=reservation_duration, environment=environment
+                ssh_public_keys=ssh_public_keys,
+                rules=rules,
+                duration=reservation_duration,
+                environment=environment,
+                debug_reservation=debug_reservation,
             )
 
         machine_pre = "Machine" if len(environments) == 1 else str(len(environments)) + " machines"
@@ -1217,6 +1239,7 @@ def restart(
     ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
     autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
     reservation_duration: int = _option_reservation_duration(REQUEST_PANEL_RESERVE),
+    debug_reservation: bool = _option_debug_reservation(REQUEST_PANEL_RESERVE),
 ):
     """
     Restart a Testing Farm request.
@@ -1401,7 +1424,11 @@ def restart(
 
         for environment in request["environments"]:
             _add_reservation(
-                ssh_public_keys=ssh_public_keys, rules=rules, duration=reservation_duration, environment=environment
+                ssh_public_keys=ssh_public_keys,
+                rules=rules,
+                duration=reservation_duration,
+                environment=environment,
+                debug_reservation=debug_reservation,
             )
 
         machine_pre = (
@@ -1636,6 +1663,7 @@ def reserve(
     git_ref: Optional[str] = typer.Option(
         None, help="Force GIT ref or branch. Useful for testing changes to reservation plan."
     ),
+    debug_reservation: bool = _option_debug_reservation(),
 ):
     """
     Reserve a system in Testing Farm.
@@ -1726,7 +1754,14 @@ def reserve(
         environment["settings"]["provisioning"].update(rules)
 
     console.print(f"🕗 Reserved for [blue]{str(reservation_duration)}[/blue] minutes")
-    environment["variables"] = {"TF_RESERVATION_DURATION": str(reservation_duration)}
+
+    if "variables" not in environment or environment["variables"] is None:
+        environment["variables"] = {}
+
+    environment["variables"]["TF_RESERVATION_DURATION"] = str(reservation_duration)
+
+    if debug_reservation:
+        environment["variables"]["TF_RESERVATION_DEBUG"] = "1"
 
     authorized_keys = read_glob_paths(ssh_public_keys).encode("utf-8")
     if not authorized_keys:

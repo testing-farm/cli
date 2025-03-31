@@ -787,6 +787,10 @@ def watch(
             _print_summary_table(request_summary, format)
             raise typer.Exit(code=2)
 
+        elif state in ["canceled", "cancel-requested"]:
+            _console_print("⚠️ pipeline cancelled", style="yellow")
+            raise typer.Exit(code=3)
+
         if no_wait:
             _print_summary_table(request_summary, format, show_details=False)
             raise typer.Exit()
@@ -1587,6 +1591,10 @@ def run(
             if state in ["complete", "error"]:
                 break
 
+            if state in ["canceled", "cancel-requested"]:
+                progress.stop()
+                exit_error("Request canceled.")
+
             time.sleep(1)
 
         # workaround TFT-1690
@@ -1861,7 +1869,11 @@ def reserve(
             current_state = state
 
             if state in ["complete", "error"]:
-                exit_error("Reservation failed, check API request or contact Testing Farm")
+                exit_error("Reservation failed, check the API request or contact Testing Farm.")
+
+            if state in ["canceled", "cancel-requested"]:
+                progress.stop()
+                exit_error("Reservation canceled.")
 
             if not print_only_request_id and task_id is not None:
                 progress.update(task_id, description=f"Reservation job is [yellow]{current_state}[/yellow]")
@@ -1915,6 +1927,10 @@ def reserve(
                 """
                     )
                 )
+
+            if '[testing-farm-request] Cancelling pipeline' in pipeline_log:
+                progress.stop()
+                exit_error('Pipeline was canceled.')
 
             if '[pre-artifact-installation]' in pipeline_log:
                 current_state = "preparing environment"

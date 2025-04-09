@@ -326,6 +326,11 @@ testing-farm request --dry-run --compose Fedora --hardware network.type='eth' --
 tail -n+4 output | jq -r '.environments[].hardware.network[0].type' | egrep '^eth$'
 tail -n+4 output | jq -r '.environments[].hardware.network[1].type' | egrep '^eth$'
 
+# timeout
+testing-farm request --dry-run --timeout 60 --compose Fedora-40 | tee output
+# egrep "⏳Pipeline timeout forced to 60 minutes" output
+tail -n+5 output | jq -r .settings.pipeline.timeout | egrep "^60$"
+
 # reserve
 testing-farm request --dry-run --reserve | tee output
 egrep "⛔ Reservations are not supported with container executions, cannot continue" output

@@ -1142,7 +1142,7 @@ def request(
     request["environments"] = environments
     request["settings"] = {}
 
-    if reserve or pipeline_type or parallel_limit:
+    if reserve or pipeline_type or parallel_limit or timeout != DEFAULT_PIPELINE_TIMEOUT:
         request["settings"]["pipeline"] = {}
 
     # in case the reservation duration is more than the pipeline timeout, adjust also the pipeline timeout
@@ -1153,6 +1153,11 @@ def request(
         else:
             request["settings"]["pipeline"] = {"timeout": timeout}
             console.print(f"⏳ Maximum reservation time is {timeout} minutes")
+
+    # forced pipeline timeout
+    elif timeout != DEFAULT_PIPELINE_TIMEOUT:
+        console.print(f"⏳ Pipeline timeout forced to {timeout} minutes")
+        request["settings"]["pipeline"] = {"timeout": timeout}
 
     if pipeline_type:
         request["settings"]["pipeline"]["type"] = pipeline_type.value

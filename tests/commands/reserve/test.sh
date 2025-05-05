@@ -125,5 +125,12 @@ testinfo "git-ref option"
 testing-farm reserve --git-ref abc --dry-run 2>&1 | tee output
 tail -n+5 output | tr -d '\n' | jq -r '.test.fmf.ref' | egrep '^abc$'
 
+# modifying tmt steps to insert prepare steps, etc.
+testinfo "tmt steps modification"
+testing-farm reserve --dry-run --tmt-discover discover-args --tmt-prepare prepare-args --tmt-finish finish-args | tee output
+tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.prepare[] | egrep "^prepare-args$"
+tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.discover[] | egrep "^discover-args$"
+tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.finish[] | egrep "^finish-args$"
+
 # remove temporary directory
 rm -rf $TMPDIR

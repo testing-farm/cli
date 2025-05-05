@@ -1659,6 +1659,9 @@ def reserve(
     repository: List[str] = OPTION_REPOSITORY,
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
     redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
+    tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
+    tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     dry_run: bool = OPTION_DRY_RUN,
     post_install_script: Optional[str] = OPTION_POST_INSTALL_SCRIPT,
     print_only_request_id: bool = typer.Option(
@@ -1753,6 +1756,18 @@ def reserve(
 
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
+
+    if tmt_discover or tmt_prepare or tmt_finish:
+        environment["tmt"] = {"extra_args": {}}
+
+        if tmt_discover:
+            environment["tmt"]["extra_args"]["discover"] = tmt_discover
+
+        if tmt_prepare:
+            environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+        if tmt_finish:
+            environment["tmt"]["extra_args"]["finish"] = tmt_finish
 
     # Setting up retries
     session = requests.Session()

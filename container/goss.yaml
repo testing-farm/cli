@@ -13,7 +13,7 @@ command:
   testing-farm version:
     exit-status: 0
     stdout:
-      - 0.0.25
+      - {{ .Env.CLI_VERSION }}
     stderr: []
     timeout: 10000
 

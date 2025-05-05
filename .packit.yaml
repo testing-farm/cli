@@ -15,6 +15,17 @@ osh_diff_scan_after_copr_build: false
 targets:
   - fedora-all
 
+srpm_build_deps:
+  - poetry
+  - python3-poetry-dynamic-versioning
+
+actions:
+  create-archive:
+    - poetry build --format=sdist
+    - bash -c "ls dist/tft_cli-*.tar.gz"
+  get-current-version:
+    - poetry version -s
+
 jobs:
 # Build on MRs
 - job: copr_build

@@ -10,6 +10,10 @@ IMAGE_TAG ?= ${USER}
 
 PROJECT_ROOT := $(shell git rev-parse --show-toplevel)
 
+# get tool version, used only inside the CLI alpine container
+# NOTE(mvadkert): do not use `testing-farm version` here as the rich print breaks goss due to formatting, and no workaround found
+CLI_VERSION=$(shell sh -c "python -c \"import importlib.metadata; print(importlib.metadata.version('tft-cli'))\" 2>/dev/null")
+
 build:  ## Build the container image
 	rm -rf $(PROJECT_ROOT)/dist
 	poetry build
@@ -52,7 +56,7 @@ goss:  ## Run goss inside the container
 		wget -O /usr/bin/goss https://github.com/goss-org/goss/releases/latest/download/goss-linux-amd64; \
 		chmod +rx /usr/bin/goss; \
 	fi
-	cd container && goss validate
+	cd container && CLI_VERSION=$(CLI_VERSION) goss validate
 
 clean:  ## Cleanup
 	buildah rmi $(IMAGE):$(IMAGE_TAG)

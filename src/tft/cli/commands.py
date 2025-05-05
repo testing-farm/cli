@@ -3,6 +3,7 @@
 
 import base64
 import codecs
+import importlib.metadata
 import ipaddress
 import json
 import os
@@ -17,7 +18,6 @@ import xml.etree.ElementTree as ET
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-import pkg_resources
 import requests
 import typer
 from click.core import ParameterSource  # pyre-ignore[21]
@@ -41,7 +41,7 @@ from tft.cli.utils import (
     uuid_valid,
 )
 
-cli_version: str = pkg_resources.get_distribution("tft-cli").version
+cli_version: str = importlib.metadata.version("tft-cli")
 
 TestingFarmRequestV1: Dict[str, Any] = {'test': {}, 'environments': None}
 Environment: Dict[str, Any] = {'arch': None, 'os': None, 'pool': None, 'artifacts': None, 'variables': {}}

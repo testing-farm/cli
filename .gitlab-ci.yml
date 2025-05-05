@@ -90,3 +90,13 @@ publish/container/version:
     - export VERSION="v$(poetry version -s)-$CI_COMMIT_SHORT_SHA"
     - IMAGE_TAG=$VERSION make build
     - IMAGE_TAG=$VERSION make push
+
+publish/pypi:
+  stage: 🚀 deploy
+  script:
+    # TODO: remove once in python ci image
+    - poetry self add "poetry-dynamic-versioning[plugin]"
+    - poetry config repositories.tft-cli https://upload.pypi.org/legacy/
+    - poetry publish --build --repository tft-cli
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/

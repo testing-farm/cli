@@ -1,6 +1,10 @@
+[project]
+dynamic = ["version"]
+name = "tft-cli"
+
 [tool.poetry]
 name = "tft-cli"
-version = "0.0.25"
+version = "0.0.0"
 description = "Testing Farm CLI tool"
 authors = ["Miroslav Vadkerti <mvadkert@redhat.com>"]
 license = "Apache-2.0"
@@ -43,6 +47,9 @@ skip-string-normalization = true
 profile = "black"
 multi_line_output = 3
 
+[tool.poetry-dynamic-versioning]
+enable = true
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"

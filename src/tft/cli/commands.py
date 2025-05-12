@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import codecs
 import ipaddress
 import json
 import os
@@ -1038,6 +1039,8 @@ def request(
             environment["hardware"] = hw_constraints(hardware)
 
         if kickstart:
+            # Typer escapes newlines in options, we need to unescape them
+            kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]  # pyre-ignore[6]
             environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
 
         if redhat_brew_build:
@@ -1737,6 +1740,8 @@ def reserve(
         environment["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
 
     if kickstart:
+        # Typer escapes newlines in options, we need to unescape them
+        kickstart = [codecs.decode(value, 'unicode_escape') for value in kickstart]  # pyre-ignore[6]
         environment["kickstart"] = options_to_dict("environment kickstart", kickstart)
 
     if redhat_brew_build:

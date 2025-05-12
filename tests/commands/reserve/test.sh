@@ -77,8 +77,10 @@ tail -n+5 output | tr -d '\n' | jq -r '.environments[].hardware.virtualization."
 testinfo "test kickstart"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart 'post-install="%post\n ls\n %end"'  | tee output
 tail -n+5 output | tr -d '\n' | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
-tail -n+5 output | tr -d '\n' | jq -r '.environments[].kickstart."post-install"' | egrep '^%post\\n ls\\n %end$'
-
+tail -n+5 output | jq -r '.environments[].kickstart."post-install"' | egrep '^%post'
+tail -n+5 output | jq -r '.environments[].kickstart."post-install"' | egrep '^ ls$'
+tail -n+5 output | jq -r '.environments[].kickstart."post-install"' | egrep '^ %end$'
+tail -n+5 output | jq -r '.environments[].kickstart."post-install"' | wc -l | egrep '^3$'
 # test artifacts
 testinfo "test artifacts"
 testing-farm reserve $ssh_key_option --dry-run --fedora-koji-build 123 --fedora-koji-build install=false,id=1234 --fedora-copr-build some-project:fedora-38 --fedora-copr-build id=some-project:fedora-38 --redhat-brew-build 456 --redhat-brew-build id=456,install=1 --repository baseurl --repository id=baseurl,install=0 --repository-file https://example.com.repo --repository-file id=https://example.com.repo | tee output

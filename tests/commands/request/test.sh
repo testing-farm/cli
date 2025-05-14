@@ -38,6 +38,10 @@ egrep "^⛔ could not auto-detect git url$" output
 git clone https://gitlab.com/testing-farm/cli
 pushd cli
 
+# invalid arguments
+testing-farm request invalid |& tee output
+egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the parameters correctly.$" output
+
 # test auto-detection
 testinfo "auto-detection test"
 testing-farm request | tee output

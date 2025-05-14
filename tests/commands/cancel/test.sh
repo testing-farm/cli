@@ -29,6 +29,10 @@ testinfo "valid request request id, no token"
 testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "No API token found in the environment, please export 'TESTING_FARM_API_TOKEN' variable." output
 
+# invalid arguments
+testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 invalid |& tee output
+egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the parameters correctly.$" output
+
 # test api url and token
 export TESTING_FARM_API_URL="http://localhost:10001"
 export TESTING_FARM_API_TOKEN="developer"

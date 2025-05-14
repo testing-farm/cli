@@ -28,6 +28,10 @@ egrep "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment va
 # test goes only with invalid token
 export TESTING_FARM_API_TOKEN=invalid
 
+# invalid arguments
+testing-farm reserve invalid |& tee output
+egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the parameters correctly.$" output
+
 # no ssh key
 testing-farm reserve --ssh-public-key /this-does-not-exist-really | tee output
 egrep "^💻 Fedora-Rawhide on x86_64" output

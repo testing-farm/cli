@@ -28,6 +28,7 @@ from rich.table import Table
 from tft.cli.config import settings
 from tft.cli.utils import (
     artifacts,
+    check_unexpected_arguments,
     cmd_output_or_exit,
     console,
     console_stderr,
@@ -83,7 +84,17 @@ class PipelineType(str, Enum):
 ARGUMENT_API_URL: str = typer.Argument(
     settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
 )
+OPTION_API_URL: str = typer.Option(
+    settings.API_URL, envvar="TESTING_FARM_API_URL", metavar='', rich_help_panel='Environment variables'
+)
 ARGUMENT_API_TOKEN: str = typer.Argument(
+    settings.API_TOKEN,
+    envvar="TESTING_FARM_API_TOKEN",
+    show_default=False,
+    metavar='',
+    rich_help_panel='Environment variables',
+)
+OPTION_API_TOKEN: str = typer.Option(
     settings.API_TOKEN,
     envvar="TESTING_FARM_API_TOKEN",
     show_default=False,
@@ -327,12 +338,12 @@ def _sanity_reserve() -> None:
         exit_error("No SSH identities found in the SSH agent. Please run `ssh-add`.")
 
 
-def _handle_reservation(session, request_id: str, autoconnect: bool = False) -> None:
+def _handle_reservation(session, api_url: str, request_id: str, autoconnect: bool = False) -> None:
     """
     Handle the reservation for :py:func:``request`` and :py:func:``restart`` commands.
     """
     # Get artifacts url
-    request_url = urllib.parse.urljoin(settings.API_URL, f"/v0.1/requests/{request_id}")
+    request_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{request_id}")
     response = session.get(request_url)
     artifacts_url = response.json()['run']['artifacts']
 
@@ -398,7 +409,7 @@ def _localhost_ingress_rule(session: requests.Session) -> str:
 
     if get_ip.ok:
         ip = get_ip.text.strip()
-        return f"-1:{ip}:-1"
+        return f"-1:{ip}:-1"  # noqa: E231
 
     else:
         exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
@@ -667,20 +678,24 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
 
 
 def watch(
-    api_url: str = typer.Option(settings.API_URL, help="Testing Farm API URL."),
+    context: typer.Context,
+    api_url: str = ARGUMENT_API_URL,
     id: str = typer.Option(..., help="Request ID to watch"),
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     format: Optional[WatchFormat] = typer.Option(WatchFormat.text, help="Output format"),
     autoconnect: bool = typer.Option(True, hidden=True),
     reserve: bool = typer.Option(False, hidden=True),
 ):
+    """Watch request for completion."""
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url")
+
     def _console_print(*args, **kwargs):
         """A helper function that will skip printing to console if output format is json"""
         if format == WatchFormat.json:
             return
         console.print(*args, **kwargs)
-
-    """Watch request for completion."""
 
     if not uuid_valid(id):
         exit_error("invalid request id")
@@ -738,7 +753,7 @@ def watch(
         if state == current_state:
             # check for reservation status and finish early if reserved
             if reserve and _is_reserved(session, request):
-                _handle_reservation(session, request["id"], autoconnect)
+                _handle_reservation(session, api_url, request["id"], autoconnect)
                 return
 
             time.sleep(1)
@@ -805,6 +820,7 @@ def version():
 
 
 def request(
+    context: typer.Context,
     api_url: str = ARGUMENT_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
     timeout: int = typer.Option(
@@ -904,6 +920,10 @@ def request(
     """
     Request testing from Testing Farm.
     """
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url", "api_token")
+
     # Split comma separated arches
     arches = normalize_multistring_option(arches)
 
@@ -1207,7 +1227,7 @@ def request(
     request_id = response.json()['id']
 
     # Watch the request and handle reservation
-    watch(api_url, request_id, no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text)
+    watch(context, api_url, request_id, no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text)
 
 
 def restart(
@@ -1258,6 +1278,9 @@ def restart(
 
     Just pass a request ID or an URL with a request ID to restart it.
     """
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url", "api_token", "internal_api_url")
 
     # UUID pattern
     uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
@@ -1476,11 +1499,18 @@ def restart(
 
     # watch
     watch(
-        str(api_url), response.json()['id'], no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text
+        context,
+        str(api_url),
+        response.json()['id'],
+        no_wait,
+        reserve=reserve,
+        autoconnect=autoconnect,
+        format=WatchFormat.text,
     )
 
 
 def run(
+    context: typer.Context,
     arch: str = typer.Option("x86_64", "--arch", help="Hardware platform of the target machine."),
     compose: Optional[str] = typer.Option(
         None,
@@ -1492,6 +1522,10 @@ def run(
     secrets: Optional[List[str]] = OPTION_SECRETS,
     dry_run: bool = OPTION_DRY_RUN,
     verbose: bool = typer.Option(False, help="Be verbose."),
+    # NOTE: we cannot use ARGUMENT_API_* because it would collide with command,
+    # so use rather OPTION variants for this command
+    api_url: str = OPTION_API_URL,
+    api_token: str = OPTION_API_TOKEN,
     command: List[str] = typer.Argument(..., help="Command to run. Use `--` to separate COMMAND from CLI options."),
 ):
     """
@@ -1499,7 +1533,7 @@ def run(
     """
 
     # check for token
-    if not settings.API_TOKEN:
+    if not api_token:
         exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
 
     # create request
@@ -1533,7 +1567,7 @@ def run(
     request["environments"] = [environment]
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
+    post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 
     # Setting up retries
     session = requests.Session()
@@ -1547,7 +1581,7 @@ def run(
             raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(settings.API_TOKEN))
+    response = session.post(post_url, json=request, headers=_get_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1559,7 +1593,7 @@ def run(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     id = response.json()['id']
-    get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
+    get_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{id}")
 
     if verbose:
         console.print(f"🔎 api [blue]{get_url}[/blue]")
@@ -1643,6 +1677,9 @@ def run(
 
 
 def reserve(
+    context: typer.Context,
+    api_url: str = ARGUMENT_API_URL,
+    api_token: str = ARGUMENT_API_TOKEN,
     ssh_public_keys: List[str] = _option_ssh_public_keys(RESERVE_PANEL_GENERAL),
     reservation_duration: int = _option_reservation_duration(RESERVE_PANEL_GENERAL),
     arch: str = typer.Option(
@@ -1693,6 +1730,9 @@ def reserve(
             console.print(message)
 
     _sanity_reserve()
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url", "api_token")
 
     # check for token
     if not settings.API_TOKEN:
@@ -1823,7 +1863,7 @@ def reserve(
         console.print(f"⏳ Maximum reservation time is {DEFAULT_PIPELINE_TIMEOUT} minutes")
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(str(settings.API_URL), "v0.1/requests")
+    post_url = urllib.parse.urljoin(api_url, "v0.1/requests")
 
     # dry run
     if dry_run:
@@ -1835,7 +1875,7 @@ def reserve(
         raise typer.Exit()
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(settings.API_TOKEN))
+    response = session.post(post_url, json=request, headers=_get_headers(api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1850,7 +1890,7 @@ def reserve(
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     id = response.json()['id']
-    get_url = urllib.parse.urljoin(str(settings.API_URL), f"/v0.1/requests/{id}")
+    get_url = urllib.parse.urljoin(api_url, f"/v0.1/requests/{id}")
 
     if not print_only_request_id:
         console.print(f"🔎 [blue]{get_url}[/blue]")
@@ -1987,6 +2027,7 @@ def update():
 
 
 def cancel(
+    context: typer.Context,
     request_id: str = typer.Argument(
         ..., help="Testing Farm request to cancel. Specified by a request ID or a string containing it."
     ),
@@ -1996,6 +2037,9 @@ def cancel(
     """
     Cancel a Testing Farm request.
     """
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url", "api_token")
 
     # UUID pattern
     uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
@@ -2043,6 +2087,7 @@ def cancel(
 
 
 def encrypt(
+    context: typer.Context,
     message: str = typer.Argument(..., help="Message to be encrypted."),
     api_url: str = ARGUMENT_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
@@ -2059,6 +2104,9 @@ def encrypt(
     """
     Create secrets for use in in-repository configuration.
     """
+
+    # Accept these arguments only via environment variables
+    check_unexpected_arguments(context, "api_url", "api_token")
 
     # check for token
     if not api_token:

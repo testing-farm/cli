@@ -13,6 +13,7 @@ from typing import Any, Dict, List, NoReturn, Optional, Union
 import requests
 import requests.adapters
 import typer
+from click.core import ParameterSource  # pyre-ignore[21]
 from rich.console import Console
 from ruamel.yaml import YAML
 from urllib3 import Retry
@@ -244,3 +245,12 @@ def read_glob_paths(glob_paths: List[str]) -> str:
             contents.append(file.read())
 
     return ''.join(contents)
+
+
+def check_unexpected_arguments(context: typer.Context, *args: str) -> Union[None, NoReturn]:
+    for argument in args:
+        if context.get_parameter_source(argument) == ParameterSource.COMMANDLINE:  # pyre-ignore[16]
+            exit_error(
+                f"Unexpected argument '{context.params.get(argument)}'. "
+                "Please make sure you are passing the parameters correctly."
+            )

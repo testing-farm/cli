@@ -24,6 +24,10 @@ testinfo "invalid request request id"
 testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e8452 | tee output
 egrep "^⛔ Could not find a valid Testing Farm request id in '40cafaa3-0efa-4abf-a20b-a6ad87e8452'.$" output
 
+# invalid arguments
+testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e8452 invalid |& tee output
+egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the parameters correctly.$" output
+
 # valid request id, no token
 testinfo "valid request request id, no token"
 testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output

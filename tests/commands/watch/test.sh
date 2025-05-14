@@ -14,6 +14,10 @@ testinfo "required --id parameter"
 testing-farm watch |& tee output
 egrep "Missing option '--id'." output
 
+# invalid arguments
+testing-farm watch --id parameter invalid |& tee output
+egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the parameters correctly.$" output
+
 # invalid id parameter
 testinfo "invalid --id parameter"
 testing-farm watch --id invalid | tee output
@@ -43,7 +47,7 @@ egrep "^Test environment installation failed: reason unknown, please escalate$" 
 
 # api url
 testinfo "custom API url"
-timeout 1 testing-farm watch --api-url https://api.stage.testing-farm.io --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
+TESTING_FARM_API_URL=https://api.stage.testing-farm.io timeout 1 testing-farm watch --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
 egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
 
 # remove temporary directory

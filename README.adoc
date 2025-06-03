@@ -31,6 +31,9 @@ To preview the latest changes merged to `main` branch, enable the `latest` copr 
 dnf copr enable @testing-farm/latest
 ....
 
+Only `x86_64` buildroots exist, but the package itself is `noarch`, so when working on a `non-x86_64` platform
+please append eg. `fedora-42-x86_64` to the `dnf copr enable` command.
+
 Install `testing-farm` cli via `dnf`.
 [source,shell]
 ....

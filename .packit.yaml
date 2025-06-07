@@ -1,10 +1,10 @@
 # See the documentation for more information:
 # https://packit.dev/docs/configuration/
 
-specfile_path: cli.spec
+specfile_path: testing-farm.spec
 
 # Name in upstream package repository or registry (e.g. in PyPI)
-upstream_package_name: tft-cli
+upstream_package_name: testing-farm
 
 # Strip starting 'v' from our git tags
 upstream_tag_template: v{version}

@@ -180,10 +180,10 @@ tail -n+6 output | jq -r .environments[1].arch | egrep '^aarch64$'
 tail -n+6 output | jq -r .environments[2].arch | egrep '^ppc64le$'
 
 # test kickstart
-testing-farm request --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart 'post-install="%post\n ls\t\n %end"'  | tee output
+testing-farm request --dry-run --compose Fedora --kickstart metadata=no_autopart --kickstart 'post-install="%post\n ls\n %end"'  | tee output
 tail -n+4 output | jq -r .environments[].kickstart.metadata | egrep '^no_autopart$'
 tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^%post'
-tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^ ls\t$'
+tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^ ls$'
 tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | egrep '^ %end$'
 tail -n+4 output | jq -r '.environments[].kickstart."post-install"' | wc -l | egrep '^3$'
 

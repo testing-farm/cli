@@ -67,6 +67,11 @@ RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref
 
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
 
+# SSH command options for reservation connections
+SSH_RESERVATION_OPTIONS = (
+    "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oServerAliveInterval=60 -oServerAliveCountMax=3"
+)
+
 # Won't be validating CIDR and 65535 max port range with regex here, not worth it
 SECURITY_GROUP_RULE_FORMAT = re.compile(r"(tcp|ip|icmp|udp|-1|[0-255]):(.*):(\d{1,5}-\d{1,5}|\d{1,5}|-1)")
 
@@ -398,7 +403,7 @@ def _handle_reservation(session, api_url: str, request_id: str, autoconnect: boo
         console.print(f"🌎 ssh root@{guests[0]}")
 
     if autoconnect:
-        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guests[0]}")  # noqa: E501
+        os.system(f"{SSH_RESERVATION_OPTIONS} root@{guests[0]}")  # noqa: E501
 
 
 def _localhost_ingress_rule(session: requests.Session) -> str:
@@ -2015,7 +2020,7 @@ def reserve(
     console.print(f"🌎 ssh root@{guest}")
 
     if autoconnect:
-        os.system(f"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@{guest}")  # noqa: E501
+        os.system(f"{SSH_RESERVATION_OPTIONS} root@{guest}")  # noqa: E501
 
 
 def update():

@@ -24,7 +24,7 @@ export TESTING_FARM_API_TOKEN=token
 # valid command, invalid token
 testinfo "valid command, invalid token"
 testing-farm run echo hello | tee output
-grep -E "^⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information.$" output
+grep -E "^⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information.$" output
 
 # valid command, no arguments
 testinfo "valid command, no arguments"

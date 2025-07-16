@@ -47,7 +47,7 @@ testinfo "auto-detection test"
 testing-farm request | tee output
 egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 egrep "💻 container image in plan on x86_64" output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # test x86_64 only without compose
 testinfo "x86_64 only without compose"

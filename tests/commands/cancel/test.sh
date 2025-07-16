@@ -41,7 +41,7 @@ export TESTING_FARM_API_TOKEN="developer"
 testinfo "token invalid"
 { echo -ne "HTTP/1.0 401 Unauthorized"; } | nc -N -l 10001 &
 testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # invalid request ID
 testinfo "request ID not found"

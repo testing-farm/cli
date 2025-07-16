@@ -53,7 +53,7 @@ testing-farm reserve $ssh_key_option | tee output
 egrep "^💻 Fedora-Rawhide on x86_64" output
 egrep "^🕗 Reserved for 30 minutes$" output
 egrep "^⏳ Maximum reservation time is 720 minutes$" output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # test compose, pool, arch
 testinfo "test compose, pool, arch can be specified"

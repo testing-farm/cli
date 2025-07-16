@@ -31,42 +31,42 @@ egrep "^⛔ Unexpected argument 'invalid'. Please make sure you are passing the 
 # valid request id, no token
 testinfo "valid request request id, no token"
 testing-farm restart 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # git-url, git-ref and git-merge-sha options, just sanity test that they are available
 testinfo "git-url, git-ref and git-merge-sha options accepted"
 testing-farm restart --git-url https://example.com --git-ref some-ref --git-merge-sha some-sha https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # plan and plan filter options, just sanity test that they are available
 testinfo "plan and plan filter options accepted"
 testing-farm restart --plan myplan --plan-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # test filter option, just sanity test that it is available
 testinfo "test filter option accepted"
 testing-farm restart --test-filter some-filter https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # worker-image option, just test it is accepted
 testinfo "worker-image option accepted"
 testing-farm restart --worker-image quay.io/testing-farm/worker:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # worker-image option, just test it is accepted
 testinfo "hardware option accepted"
 testing-farm restart --hardware boot.mode=uefi https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # pool option, just test it is accepted
 testinfo "pool option accepted"
 testing-farm restart --pool some-pool https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # pipeline type, just test it is accepted
 testinfo "test pipeline type"
 testing-farm restart --pipeline-type tmt-multihost https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 testing-farm restart --pipeline-type invalid https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
 egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
@@ -74,20 +74,20 @@ egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." o
 # parallel-limit, just test it is accepted
 testinfo "test parallel-limit"
 testing-farm restart --parallel-limit 123 https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # tags, just test it is accepted
 testinfo "test tags"
 testing-farm restart --tag ArtemisUseSpot=false -t Business=TestingFarm https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 # tmt extra args, just test it is accepted
 for step in discover prepare finish; do
   testinfo "tmt extra args - $step"
   testing-farm restart --tmt-$step args --tmt-$step args https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
-  egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+  egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 done
 
 # reserve
 testing-farm restart --reserve --duration 1800 --no-autoconnect --ssh-public-key ${SSH_KEY}.pub https://api.dev.testing-farm.io/v0.1/request/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "⛔ API token is invalid. See https://docs.testing-farm.io/general/0.1/onboarding.html for more information." output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output

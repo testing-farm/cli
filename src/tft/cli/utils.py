@@ -90,6 +90,20 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
                 constraints[first_key].append(new_dict)
             continue
 
+        # Special handling for CPU flags as they are also a list
+        if first_key == 'cpu' and len(path_splitted) == 2 and path_splitted[1] == 'flag':
+            second_key = 'flag'
+
+            if first_key not in constraints:
+                constraints[first_key] = {}
+
+            if second_key not in constraints[first_key]:
+                constraints[first_key][second_key] = []
+
+            constraints[first_key][second_key].append(value)
+
+            continue
+
         # Walk the path, step by step, and initialize containers along the way. The last step is not
         # a name of another nested container, but actually a name in the last container.
         container: Any = constraints

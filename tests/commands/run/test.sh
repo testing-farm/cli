@@ -44,6 +44,12 @@ tail -n+2 output | jq -r .environments[].variables.SCRIPT | grep -E "^sestatus$"
 
 # hardware
 testinfo "hardware"
-testing-farm run --dry-run --compose Fedora-Rawhide --hardware memory=">=4GB" --hardware virtualization.is-virtualized=false -- sestatus | tee output
+testing-farm run --dry-run --compose Fedora-Rawhide --hardware memory=">=4GB" \
+                                                    --hardware virtualization.is-virtualized=false \
+                                                    --hardware cpu.flag=avx \
+                                                    --hardware cpu.flag="!= avx2" \
+                                                    -- sestatus | tee output
 tail -n+2 output | jq -r .environments[].hardware.memory | grep -E '^>=4GB$'
 tail -n+2 output | jq -r '.environments[].hardware.virtualization."is-virtualized"' | grep -E '^false$'
+tail -n+2 output | jq -r '.environments[].hardware.cpu.flag[0]' | grep -E '^avx$'
+tail -n+2 output | jq -r '.environments[].hardware.cpu.flag[1]' | grep -E '^!= avx2$'

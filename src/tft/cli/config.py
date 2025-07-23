@@ -14,7 +14,7 @@ settings = LazySettings(
     STATUS_PAGE="https://status.testing-farm.io",
     ONBOARDING_DOCS="https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html",
     CONTAINER_SIGN="/.testing-farm-container",
-    WATCH_TICK=3,
+    WATCH_TICK=30,
     DEFAULT_API_TIMEOUT=10,
     DEFAULT_API_RETRIES=7,
     # default reservation duration in minutes

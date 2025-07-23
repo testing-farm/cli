@@ -761,7 +761,7 @@ def watch(
                 _handle_reservation(session, api_url, request["id"], autoconnect)
                 return
 
-            time.sleep(1)
+            time.sleep(settings.WATCH_TICK)
             continue
 
         current_state = state
@@ -1630,7 +1630,7 @@ def run(
             state = request["state"]
 
             if state == current_state:
-                time.sleep(1)
+                time.sleep(settings.WATCH_TICK)
                 continue
 
             current_state = state
@@ -1642,7 +1642,7 @@ def run(
                 progress.stop()
                 exit_error("Request canceled.")
 
-            time.sleep(1)
+            time.sleep(settings.WATCH_TICK)
 
         # workaround TFT-1690
         install_http_retries(session, status_forcelist_extend=[404], timeout=60, retry_backoff_factor=0.1)
@@ -1933,7 +1933,7 @@ def reserve(
             state = request["state"]
 
             if state == current_state:
-                time.sleep(1)
+                time.sleep(settings.WATCH_TICK)
                 continue
 
             current_state = state
@@ -1948,7 +1948,7 @@ def reserve(
             if not print_only_request_id and task_id is not None:
                 progress.update(task_id, description=f"Reservation job is [yellow]{current_state}[/yellow]")
 
-            time.sleep(1)
+            time.sleep(settings.WATCH_TICK)
 
         while current_state != "ready":
             if not print_only_request_id and task_id:
@@ -2015,7 +2015,7 @@ def reserve(
                 current_state = "ready"
                 guest = search.group(1)
 
-            time.sleep(1)
+            time.sleep(settings.WATCH_TICK)
 
     console.print(f"🌎 ssh root@{guest}")
 

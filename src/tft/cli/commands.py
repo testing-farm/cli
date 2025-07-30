@@ -1332,9 +1332,9 @@ def restart(
     # Transform to a request
     request['environments'] = request['environments_requested']
 
-    # Remove all keys except test and environments
+    # Remove all keys except test, environments and settings
     for key in list(request):
-        if key not in ['test', 'environments']:
+        if key not in ['test', 'environments', 'settings']:
             del request[key]
 
     test = request['test']

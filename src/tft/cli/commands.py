@@ -271,6 +271,13 @@ OPTION_RESERVE: bool = typer.Option(
     help="Reserve machine after testing, similarly to the `reserve` command.",
     rich_help_panel=REQUEST_PANEL_RESERVE,
 )
+OPTION_TMT_CONTEXT: Optional[List[str]] = typer.Option(
+    None,
+    "-c",
+    "--context",
+    metavar="key=value|@file",
+    help="Context variables to pass to `tmt`. The @ prefix marks a yaml file to load.",
+)
 
 
 def _option_autoconnect(panel: str) -> bool:
@@ -861,13 +868,7 @@ def request(
     hardware: List[str] = OPTION_HARDWARE,
     kickstart: Optional[List[str]] = OPTION_KICKSTART,
     pool: Optional[str] = OPTION_POOL,
-    cli_tmt_context: Optional[List[str]] = typer.Option(
-        None,
-        "-c",
-        "--context",
-        metavar="key=value|@file",
-        help="Context variables to pass to `tmt`. The @ prefix marks a yaml file to load.",
-    ),
+    cli_tmt_context: Optional[List[str]] = OPTION_TMT_CONTEXT,
     variables: Optional[List[str]] = OPTION_VARIABLES,
     secrets: Optional[List[str]] = OPTION_SECRETS,
     tmt_environment: Optional[List[str]] = typer.Option(
@@ -1254,6 +1255,8 @@ def restart(
         None,
         help="Force pool to provision.",
     ),
+    cli_tmt_context: Optional[List[str]] = OPTION_TMT_CONTEXT,
+    variables: Optional[List[str]] = OPTION_VARIABLES,
     git_url: Optional[str] = typer.Option(None, help="Force URL of the GIT repository to test."),
     git_ref: Optional[str] = typer.Option(None, help="Force GIT ref or branch to test."),
     git_merge_sha: Optional[str] = typer.Option(None, help="Force GIT ref or branch into which --ref will be merged."),
@@ -1405,6 +1408,14 @@ def restart(
     if tmt_finish:
         for environment in request["environments"]:
             environment["tmt"]["extra_args"]["finish"] = tmt_finish
+
+    if cli_tmt_context:
+        for environment in request["environments"]:
+            environment["tmt"]["context"] = options_to_dict("tmt context", cli_tmt_context)
+
+    if variables:
+        for environment in request["environments"]:
+            environment["variables"] = options_to_dict("environment variables", variables)
 
     test_type = "fmf" if "fmf" in request["test"] else "sti"
 

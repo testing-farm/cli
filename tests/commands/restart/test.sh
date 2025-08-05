@@ -81,6 +81,21 @@ testinfo "test tags"
 testing-farm restart --tag ArtemisUseSpot=false -t Business=TestingFarm https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# context, just test it is accepted
+testinfo "test context"
+testing-farm restart --context key=value --context key2=value2 https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# context file, just test it is accepted
+testinfo "test context file"
+testing-farm restart --context @file https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# environment, just test it is accepted
+testinfo "test environment"
+testing-farm restart --environment key=value --environment key2=value2 https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
 # tmt extra args, just test it is accepted
 for step in discover prepare finish; do
   testinfo "tmt extra args - $step"

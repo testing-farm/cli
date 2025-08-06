@@ -28,7 +28,7 @@ container:
   stage: 📦 build
   image: quay.io/buildah/stable:latest
   script:
-    - dnf -y install make poetry python
+    - dnf -y install make poetry python python3-poetry-dynamic-versioning
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=$CI_PIPELINE_ID make build
     - IMAGE_TAG=$CI_PIPELINE_ID make push
@@ -75,7 +75,7 @@ publish/container/latest:
   stage: 🚀 deploy
   image: quay.io/buildah/stable:latest
   script:
-    - dnf -y install make poetry python
+    - dnf -y install make poetry python python3-poetry-dynamic-versioning
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=latest make build
     - IMAGE_TAG=latest make push
@@ -85,7 +85,7 @@ publish/container/version:
   stage: 🚀 deploy
   image: quay.io/buildah/stable:latest
   script:
-    - dnf -y install make poetry python
+    - dnf -y install make poetry python python3-poetry-dynamic-versioning
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - export VERSION="v$(poetry version -s)-$CI_COMMIT_SHORT_SHA"
     - IMAGE_TAG=$VERSION make build
@@ -95,7 +95,7 @@ publish/pypi:
   stage: 🚀 deploy
   script:
     # TODO: remove once in python ci image
-    - poetry self add "poetry-dynamic-versioning[plugin]"
+    - dnf -y install python3-poetry-dynamic-versioning
     - poetry config repositories.tft-cli https://upload.pypi.org/legacy/
     - poetry publish --build --repository tft-cli
   rules:

@@ -27,4 +27,6 @@ settings = LazySettings(
     TESTING_FARM_TESTS_GIT_URL="https://gitlab.com/testing-farm/tests",
     TESTING_FARM_SANITY_PLAN="/testing-farm/sanity",
     PUBLIC_IP_CHECKER_URL="https://ipv4.icanhazip.com",
+    # number or tries for resolving localhost public IP, useful if the user has multiple IPs
+    PUBLIC_IP_RESOLVE_TRIES=1,
 )

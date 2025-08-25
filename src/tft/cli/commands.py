@@ -1113,7 +1113,10 @@ def request(
         if len(environments) > 1:
             exit_error("Reservations are currently supported for a single plan, cannot continue")
 
-        rules = _parse_security_group_rules([_localhost_ingress_rule(session)], [])
+        # support cases where the user has multiple localhost addresses
+        rules = _parse_security_group_rules(
+            list({_localhost_ingress_rule(requests.Session()) for _ in range(0, settings.PUBLIC_IP_RESOLVE_TRIES)}), []
+        )
 
         for environment in environments:
             _add_reservation(
@@ -1471,7 +1474,10 @@ def restart(
         if len(request["environments"]) > 1:
             exit_error("Reservations are currently supported for a single plan, cannot continue")
 
-        rules = _parse_security_group_rules([_localhost_ingress_rule(session)], [])
+        # support cases where the user has multiple localhost addresses
+        rules = _parse_security_group_rules(
+            list({_localhost_ingress_rule(requests.Session()) for _ in range(0, settings.PUBLIC_IP_RESOLVE_TRIES)}), []
+        )
 
         for environment in request["environments"]:
             _add_reservation(
@@ -1837,7 +1843,10 @@ def reserve(
     if not skip_workstation_access or security_group_rule_ingress or security_group_rule_egress:
         ingress_rules = security_group_rule_ingress or []
         if not skip_workstation_access:
-            ingress_rules.append(_localhost_ingress_rule(session))
+            # support cases where the user has multiple localhost addresses
+            ingress_rules.extend(
+                {_localhost_ingress_rule(requests.Session()) for _ in range(0, settings.PUBLIC_IP_RESOLVE_TRIES)}
+            )
 
         rules = _parse_security_group_rules(ingress_rules, security_group_rule_egress or [])
         environment["settings"]["provisioning"].update(rules)

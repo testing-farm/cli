@@ -1574,7 +1574,7 @@ def restart(
     # watch
     watch(
         context,
-        str(effective_source_api_url),
+        str(effective_target_api_url),
         response.json()['id'],
         no_wait,
         reserve=reserve,

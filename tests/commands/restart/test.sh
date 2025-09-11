@@ -106,3 +106,105 @@ done
 # reserve
 testing-farm restart --reserve --duration 1800 --no-autoconnect --ssh-public-key ${SSH_KEY}.pub https://api.dev.testing-farm.io/v0.1/request/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# Mock server tests for source/target URL separation
+testinfo "Testing source/target URL separation with mock servers"
+
+# Start mock servers for source and target operations
+python3 -c "
+import http.server
+import socketserver
+import threading
+import time
+import json
+import sys
+from urllib.parse import urlparse, parse_qs
+
+class MockHandler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        # Log to files to verify which server was called
+        with open(f'/tmp/mock_{self.server.port}_requests.log', 'a') as f:
+            f.write(f'{self.command} {self.path} - {format % args}\n')
+
+    def do_GET(self):
+        if '/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527' in self.path:
+            # Mock successful request response
+            response = {
+                'id': '40cafaa3-0efa-4abf-a20b-a6ad87e84527',
+                'environments_requested': [{'os': {'compose': 'Fedora-39'}}],
+                'test': {'fmf': {'url': 'https://example.com', 'ref': 'main'}},
+                'settings': {}
+            }
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if '/v0.1/requests' in self.path:
+            # Mock successful POST response
+            response = {'id': 'new-request-id-12345'}
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+# Start source mock server on port 8001
+source_server = socketserver.TCPServer(('localhost', 8001), MockHandler)
+source_server.port = 8001
+source_thread = threading.Thread(target=source_server.serve_forever)
+source_thread.daemon = True
+source_thread.start()
+
+# Start target mock server on port 8002
+target_server = socketserver.TCPServer(('localhost', 8002), MockHandler)
+target_server.port = 8002
+target_thread = threading.Thread(target=target_server.serve_forever)
+target_thread.daemon = True
+target_thread.start()
+
+print('Mock servers started')
+time.sleep(60)  # Keep servers running for test duration
+" &
+MOCK_PID=$!
+
+# Wait for servers to start
+sleep 2
+
+# Clear previous logs
+rm -f /tmp/mock_8001_requests.log /tmp/mock_8002_requests.log
+
+# Test with different source and target URLs
+testinfo "Testing separate source and target URLs"
+TESTING_FARM_SOURCE_API_URL=http://localhost:8001 \
+TESTING_FARM_INTERNAL_SOURCE_API_URL=http://localhost:8001 \
+TESTING_FARM_TARGET_API_URL=http://localhost:8002 \
+TESTING_FARM_SOURCE_API_TOKEN=source-token \
+TESTING_FARM_TARGET_API_TOKEN=target-token \
+testing-farm restart --dry-run 40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+
+# Verify source server was called
+if [ -f /tmp/mock_8001_requests.log ]; then
+    testinfo "Verifying source server was called"
+    grep "GET.*40cafaa3-0efa-4abf-a20b-a6ad87e84527" /tmp/mock_8001_requests.log || {
+        echo "❌ Source server was not called for request details"
+        exit 1
+    }
+    echo "✅ Source server correctly called for request details"
+else
+    echo "❌ Source server log not found"
+    exit 1
+fi
+
+# Note: Target server won't be called with --dry-run, but we can test the configuration is accepted
+echo "✅ Source/target URL separation configuration accepted"
+
+# Cleanup
+kill $MOCK_PID 2>/dev/null || true
+rm -f /tmp/mock_8001_requests.log /tmp/mock_8002_requests.log

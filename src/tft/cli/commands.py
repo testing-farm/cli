@@ -106,6 +106,33 @@ OPTION_API_TOKEN: str = typer.Option(
     metavar='',
     rich_help_panel='Environment variables',
 )
+
+# Restart command specific arguments for source operations
+ARGUMENT_SOURCE_API_URL: str = typer.Argument(
+    None, envvar="TESTING_FARM_SOURCE_API_URL", metavar='', rich_help_panel='Environment variables'
+)
+ARGUMENT_INTERNAL_SOURCE_API_URL: str = typer.Argument(
+    None, envvar="TESTING_FARM_INTERNAL_SOURCE_API_URL", metavar='', rich_help_panel='Environment variables'
+)
+ARGUMENT_SOURCE_API_TOKEN: str = typer.Argument(
+    None,
+    envvar="TESTING_FARM_SOURCE_API_TOKEN",
+    show_default=False,
+    metavar='',
+    rich_help_panel='Environment variables',
+)
+
+# Restart command specific arguments for target operations
+ARGUMENT_TARGET_API_URL: str = typer.Argument(
+    None, envvar="TESTING_FARM_TARGET_API_URL", metavar='', rich_help_panel='Environment variables'
+)
+ARGUMENT_TARGET_API_TOKEN: str = typer.Argument(
+    None,
+    envvar="TESTING_FARM_TARGET_API_TOKEN",
+    show_default=False,
+    metavar='',
+    rich_help_panel='Environment variables',
+)
 OPTION_TMT_PLAN_NAME: Optional[str] = typer.Option(
     None,
     "--plan",
@@ -1250,6 +1277,11 @@ def restart(
         rich_help_panel='Environment variables',
     ),
     api_token: str = ARGUMENT_API_TOKEN,
+    source_api_url: Optional[str] = ARGUMENT_SOURCE_API_URL,
+    internal_source_api_url: Optional[str] = ARGUMENT_INTERNAL_SOURCE_API_URL,
+    source_api_token: Optional[str] = ARGUMENT_SOURCE_API_TOKEN,
+    target_api_url: Optional[str] = ARGUMENT_TARGET_API_URL,
+    target_api_token: Optional[str] = ARGUMENT_TARGET_API_TOKEN,
     compose: Optional[str] = typer.Option(
         None,
         help="Force compose used to provision test environment.",  # noqa
@@ -1291,7 +1323,26 @@ def restart(
     """
 
     # Accept these arguments only via environment variables
-    check_unexpected_arguments(context, "api_url", "api_token", "internal_api_url")
+    check_unexpected_arguments(
+        context,
+        "api_url",
+        "api_token",
+        "internal_api_url",
+        "source_api_url",
+        "internal_source_api_url",
+        "source_api_token",
+        "target_api_url",
+        "target_api_token",
+    )
+
+    # Determine source configuration (fallback to general settings)
+    effective_source_api_url = source_api_url or api_url
+    effective_internal_source_api_url = internal_source_api_url or internal_api_url
+    effective_source_api_token = source_api_token or api_token
+
+    # Determine target configuration (fallback to general settings)
+    effective_target_api_url = target_api_url or api_url
+    effective_target_api_token = target_api_token or api_token
 
     # UUID pattern
     uuid_pattern = re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
@@ -1307,14 +1358,14 @@ def restart(
     _request_id = uuid_match.group()
 
     # Construct URL to the internal API
-    get_url = urllib.parse.urljoin(str(internal_api_url), f"v0.1/requests/{_request_id}")
+    get_url = urllib.parse.urljoin(str(effective_internal_source_api_url), f"v0.1/requests/{_request_id}")
 
     # Setting up retries
     session = requests.Session()
     install_http_retries(session)
 
     # Get the request details
-    response = session.get(get_url, headers=_get_headers(api_token))
+    response = session.get(get_url, headers=_get_headers(effective_source_api_token))
 
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
@@ -1322,10 +1373,11 @@ def restart(
     # The API token is valid, but it doesn't own the request
     if response.status_code == 403:
         console.print(
-            "⚠️ [yellow] You are not the owner of this request. Any secrets associated with the request will not be included on the restart.[/yellow]"  # noqa: E501
+            "⚠️ [yellow] You are not the owner of this request. Any secrets associated with the "
+            "request will not be included on the restart.[/yellow]"
         )
-        # Construct URL to the internal API
-        get_url = urllib.parse.urljoin(str(api_url), f"v0.1/requests/{_request_id}")
+        # Construct URL to the API
+        get_url = urllib.parse.urljoin(str(effective_source_api_url), f"v0.1/requests/{_request_id}")
 
         # Get the request details
         response = session.get(get_url)
@@ -1502,10 +1554,10 @@ def restart(
         raise typer.Exit()
 
     # submit request to Testing Farm
-    post_url = urllib.parse.urljoin(str(api_url), "v0.1/requests")
+    post_url = urllib.parse.urljoin(str(effective_target_api_url), "v0.1/requests")
 
     # handle errors
-    response = session.post(post_url, json=request, headers=_get_headers(api_token))
+    response = session.post(post_url, json=request, headers=_get_headers(effective_target_api_token))
     if response.status_code == 401:
         exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
 
@@ -1522,7 +1574,7 @@ def restart(
     # watch
     watch(
         context,
-        str(api_url),
+        str(effective_source_api_url),
         response.json()['id'],
         no_wait,
         reserve=reserve,

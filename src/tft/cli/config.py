@@ -10,6 +10,13 @@ settings = LazySettings(
     API_URL="https://api.dev.testing-farm.io/v0.1",
     INTERNAL_API_URL="https://internal.api.dev.testing-farm.io/v0.1",
     API_TOKEN=None,
+    # Restart command specific source API configuration (fallback to general settings)
+    SOURCE_API_URL=None,
+    INTERNAL_SOURCE_API_URL=None,
+    SOURCE_API_TOKEN=None,
+    # Restart command specific target API configuration (fallback to general settings)
+    TARGET_API_URL=None,
+    TARGET_API_TOKEN=None,
     ISSUE_TRACKER="https://gitlab.com/testing-farm/general/-/issues/new",
     STATUS_PAGE="https://status.testing-farm.io",
     ONBOARDING_DOCS="https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html",

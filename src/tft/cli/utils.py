@@ -6,8 +6,10 @@ import itertools
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import tempfile
 import uuid
 from dataclasses import dataclass
 from enum import Enum
@@ -375,3 +377,38 @@ def authorization_headers(api_key: str) -> Dict[str, str]:
     Used for authentication.
     """
     return {'Authorization': f'Bearer {api_key}'}
+
+
+def edit_with_editor(data: Any, description: Optional[str]) -> Any:
+    """
+    Open data in an editor for user modification and return it back.
+    If description specified, print it as a user message together with the used editor.
+    """
+    # Get the editor from environment variable, fallback to sensible defaults
+    editor = os.environ.get('EDITOR')
+    if not editor:
+        # Try common editors in order of preference
+        for candidate in ['vim', 'vi', 'nano', 'emacs']:
+            if shutil.which(candidate):
+                editor = candidate
+                break
+
+    if not editor:
+        exit_error("No editor found. Please set the 'EDITOR' environment variable.")
+
+    # Create a temporary file with the JSON content
+    with tempfile.NamedTemporaryFile(mode='w') as temp_file:
+        temp_file.write(data)
+        temp_file.flush()
+
+        # Open the editor
+        if description:
+            console.print(f"✏️  {description}, editor '{editor}'")
+        result = subprocess.run([editor, temp_file.name])
+
+        if result.returncode != 0:
+            exit_error(f"Editor '{editor}' exited with non-zero status: {result.returncode}")
+
+        # Read the modified content
+        with open(temp_file.name, 'r') as modified_file:
+            return modified_file.read()

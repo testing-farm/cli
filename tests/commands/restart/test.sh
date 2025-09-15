@@ -107,6 +107,11 @@ done
 testing-farm restart --reserve --duration 1800 --no-autoconnect --ssh-public-key ${SSH_KEY}.pub https://api.dev.testing-farm.io/v0.1/request/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# edit option, just test it is accepted
+testinfo "edit option accepted"
+testing-farm restart --edit https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
 # Mock server tests for source/target URL separation
 testinfo "Testing source/target URL separation with mock servers"
 

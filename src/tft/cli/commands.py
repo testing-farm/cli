@@ -33,6 +33,7 @@ from tft.cli.utils import (
     cmd_output_or_exit,
     console,
     console_stderr,
+    edit_with_editor,
     exit_error,
     extract_uuid,
     hw_constraints,
@@ -1325,6 +1326,13 @@ def restart(
     autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
     reservation_duration: int = _option_reservation_duration(REQUEST_PANEL_RESERVE),
     debug_reservation: bool = _option_debug_reservation(REQUEST_PANEL_RESERVE),
+    edit: bool = typer.Option(
+        False,
+        help=(
+            "Edit the request JSON in editor before submitting. "
+            "Use the EDITOR environment variable to adjust the editor if needed."
+        ),
+    ),
 ):
     """
     Restart a Testing Farm request.
@@ -1546,6 +1554,18 @@ def restart(
         console.print(
             f"🕗 {machine_pre} will be reserved after testing for [blue]{str(reservation_duration)}[/blue] minutes"
         )
+
+    # edit request if requested
+    if edit:
+        while True:
+            try:
+                request = json.loads(edit_with_editor(json.dumps(request, indent=2), "editing request"))
+                break
+            except (TypeError, ValueError) as error:
+                console.print(f"⛔ Edited request is not a valid JSON, cannot continue: {error}", style="red")
+                if typer.confirm("❓️ Edit again?"):
+                    continue
+                raise typer.Exit(code=255)
 
     # dry run
     if dry_run:

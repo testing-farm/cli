@@ -100,9 +100,9 @@ testinfo "test show secrets with ID"
 testing-farm list --id 12345678-1234-1234-1234-123456789abc --show-secrets 2>&1 | tee output
 grep -E "(No API token|--show-secrets.*--id)" output || true
 
-# test reserve flag
+# test reservations option
 testinfo "test reserve flag"
-testing-farm list --all --age 1h --reserve
+testing-farm list --all --age 1h --reservations
 
 # test conflicting options
 testinfo "test conflicting options with --id"
@@ -120,23 +120,19 @@ testing-farm list --id 12345678-1234-1234-1234-123456789abc --min-age 1h 2>&1 | 
 grep -E "conflicts with.*--min-age" output
 set -e
 
-# test reserve conflicts with ID
-testinfo "test reserve conflicts with --id"
+# test reservations conflict with ID
+testinfo "test reservations conflicts with --id"
 set +e
-testing-farm list --id 12345678-1234-1234-1234-123456789abc --reserve 2>&1 | tee output
-grep -E "--reserve.*cannot be used with.*--id" output
+testing-farm list --id 12345678-1234-1234-1234-123456789abc --reservations 2>&1 | tee output
+grep -E "--reservations.*cannot be used with.*--id" output
 set -e
 
-# test reserve conflicts with explicit format
-testinfo "test reserve conflicts with --format"
+# test reservations conflicts with explicit format
+testinfo "test reservations conflicts with --format"
 set +e
-testing-farm list --all --age 1h --reserve --format json 2>&1 | tee output
-grep -E "--reserve.*conflicts with.*--format" output
+testing-farm list --all --age 1h -r --format json 2>&1 | tee output
+grep -E "--reservations.*conflicts with.*--format" output
 set -e
-
-# test show full request ID option (removing this test as --show-request-id doesn't exist)
-# testinfo "test show full request ID"
-# testing-farm list --all --age 1h --show-request-id --format text
 
 # test invalid arguments
 testinfo "test invalid age format"

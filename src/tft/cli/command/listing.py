@@ -587,7 +587,7 @@ def listing(
     token_id: Optional[str] = typer.Option(
         None, "--token-id", help="Show requests for a specific token ID. Must be a valid UUID4."
     ),
-    reserve: bool = typer.Option(False, "-r", "--reserve", help="Show active reservations."),
+    reserve: bool = typer.Option(False, "-r", "--reservations", help="Show active reservations."),
 ):
     """
     List Testing Farm requests.
@@ -631,7 +631,8 @@ def listing(
 
         if reserve:
             exit_error(
-                "The '--reserve' option cannot be used with '--id'. Use '--reserve' without specifying request IDs."
+                "The '--reservations' option cannot be used with '--id'. "
+                "Use '--reservations' without specifying request IDs."
             )
 
     elif show_secrets:
@@ -640,7 +641,7 @@ def listing(
     # Validate reserve conflicts with explicit format
     if reserve and context.get_parameter_source("format") == ParameterSource.COMMANDLINE:
         exit_error(
-            "The '--reserve' option conflicts with explicit '--format'. "
+            "The '--reservations' option conflicts with explicit '--format'. "
             "Reservations use a specialized table format that cannot be changed."
         )
 

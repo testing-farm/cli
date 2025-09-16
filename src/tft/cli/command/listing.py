@@ -634,15 +634,15 @@ def listing(
                 "The '--reserve' option cannot be used with '--id'. " "Use '--reserve' without specifying request IDs."
             )
 
+    elif show_secrets:
+        exit_error("The '--show-secrets' option can be used only with '--id' option.")
+
     # Validate reserve conflicts with explicit format
     if reserve and context.get_parameter_source("format") == ParameterSource.COMMANDLINE:
         exit_error(
             "The '--reserve' option conflicts with explicit '--format'. "
             "Reservations use a specialized table format that cannot be changed."
         )
-
-    elif show_secrets:
-        exit_error("The '--show-secrets' option can be used only with '--id' option.")
 
     # Validate ranch conflicts with mine
     if mine and ranch:
@@ -717,7 +717,7 @@ def listing(
 
     # Validate token if provided
     if api_token:
-        whoami_url = urllib.parse.urljoin(base_url, "v0.1/whoami")
+        whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
         try:
             response = session.get(whoami_url, headers=authorization_headers(api_token))
             if response.status_code == 401:

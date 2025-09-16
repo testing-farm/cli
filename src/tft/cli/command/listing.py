@@ -631,7 +631,7 @@ def listing(
 
         if reserve:
             exit_error(
-                "The '--reserve' option cannot be used with '--id'. " "Use '--reserve' without specifying request IDs."
+                "The '--reserve' option cannot be used with '--id'. Use '--reserve' without specifying request IDs."
             )
 
     elif show_secrets:

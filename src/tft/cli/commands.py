@@ -68,7 +68,10 @@ RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref {RESERVE_REF} --test {RESERVE_TEST}"
 
+# NOTE(mvadkert): note that reservation duration is different per ranch,
+# ignore this fact for now here for reservations
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
+
 DEFAULT_AGE = "7d"
 
 # SSH command options for reservation connections
@@ -889,9 +892,14 @@ def request(
     context: typer.Context,
     api_url: str = ARGUMENT_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
-    timeout: int = typer.Option(
-        DEFAULT_PIPELINE_TIMEOUT,
-        help="Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.",
+    timeout: Optional[int] = typer.Option(
+        None,
+        help=(
+            "Set the timeout for the request in minutes. "
+            "If the request takes longer than this, it will be terminated. "
+            "The timeout is counted from the time the request is switched to the running state."
+            "For default timeout see https://docs.testing-farm.io/Testing%20Farm/0.1/test-request.html."
+        ),
     ),
     test_type: str = typer.Option("fmf", help="Test type to use, if not set autodetected."),
     tmt_plan_name: Optional[str] = OPTION_TMT_PLAN_NAME,
@@ -1218,11 +1226,14 @@ def request(
     request["environments"] = environments
     request["settings"] = {}
 
-    if reserve or pipeline_type or parallel_limit or timeout != DEFAULT_PIPELINE_TIMEOUT:
+    forced_pipeline_timeout = context.get_parameter_source("timeout") == ParameterSource.COMMANDLINE
+
+    if reserve or pipeline_type or parallel_limit or forced_pipeline_timeout:
         request["settings"]["pipeline"] = {}
 
     # in case the reservation duration is more than the pipeline timeout, adjust also the pipeline timeout
     if reserve:
+        timeout = timeout or DEFAULT_PIPELINE_TIMEOUT
         if reservation_duration > timeout:
             request["settings"]["pipeline"] = {"timeout": reservation_duration}
             console.print(f"⏳ Maximum reservation time is {reservation_duration} minutes")
@@ -1231,7 +1242,7 @@ def request(
             console.print(f"⏳ Maximum reservation time is {timeout} minutes")
 
     # forced pipeline timeout
-    elif timeout != DEFAULT_PIPELINE_TIMEOUT:
+    elif forced_pipeline_timeout:
         console.print(f"⏳ Pipeline timeout forced to {timeout} minutes")
         request["settings"]["pipeline"] = {"timeout": timeout}
 

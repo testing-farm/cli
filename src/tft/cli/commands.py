@@ -329,6 +329,17 @@ OPTION_TMT_CONTEXT: Optional[List[str]] = typer.Option(
     metavar="key=value|@file",
     help="Context variables to pass to `tmt`. The @ prefix marks a yaml file to load.",
 )
+OPTION_TMT_ENVIRONMENT: Optional[List[str]] = typer.Option(
+    None,
+    "-T",
+    "--tmt-environment",
+    metavar="key=value|@file",
+    help=(
+        "Environment variables to pass to the tmt process. "
+        "Used to configure tmt report plugins like reportportal or polarion. "
+        "The @ prefix marks a yaml file to load."
+    ),
+)
 
 
 def _option_autoconnect(panel: str) -> bool:
@@ -914,17 +925,7 @@ def request(
     cli_tmt_context: Optional[List[str]] = OPTION_TMT_CONTEXT,
     variables: Optional[List[str]] = OPTION_VARIABLES,
     secrets: Optional[List[str]] = OPTION_SECRETS,
-    tmt_environment: Optional[List[str]] = typer.Option(
-        None,
-        "-T",
-        "--tmt-environment",
-        metavar="key=value|@file",
-        help=(
-            "Environment variables to pass to the tmt process. "
-            "Used to configure tmt report plugins like reportportal or polarion. "
-            "The @ prefix marks a yaml file to load."
-        ),
-    ),
+    tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
@@ -1793,6 +1794,7 @@ def reserve(
     repository: List[str] = OPTION_REPOSITORY,
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
     redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
+    tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
@@ -1907,6 +1909,12 @@ def reserve(
 
         if tmt_finish:
             environment["tmt"]["extra_args"]["finish"] = tmt_finish
+
+    if tmt_environment:
+        if "tmt" not in environment:
+            environment["tmt"] = {}
+
+        environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
 
     # Setting up retries
     session = requests.Session()

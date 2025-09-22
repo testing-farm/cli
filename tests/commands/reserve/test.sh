@@ -138,5 +138,11 @@ tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.prepare[] |
 tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.discover[] | egrep "^discover-args$"
 tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.extra_args.finish[] | egrep "^finish-args$"
 
+# test tmt environment variables
+testinfo "test tmt environment variables"
+testing-farm reserve --dry-run --tmt-environment FirstKey=FirstValue -T SecondKey=SecondValue | tee output
+tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.environment.FirstKey | egrep '^FirstValue$'
+tail -n+5 output | tr -d '\n' | jq -r .environments[].tmt.environment.SecondKey | egrep '^SecondValue$'
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -364,5 +364,31 @@ tail -n+6 output | jq -r .environments[].variables.TF_RESERVATION_DURATION | egr
 testing-farm request --dry-run --reserve --compose Fedora-40 --ssh-public-key "${SSH_KEY}.pub" | tee output
 tail -n+6 output | jq -r .environments[].secrets.TF_RESERVATION_AUTHORIZED_KEYS_BASE64 | egrep "^$(base64 -w0 < ${SSH_KEY}.pub)$"
 
+# test --test option with --reserve extends test filter
+testinfo "test --test option with --reserve extends test filter"
+testing-farm request --dry-run --reserve --compose Fedora-40 --test "my-test" | tee output
+tail -n+6 output | jq -r .test.fmf.test_name | egrep "^my-test|/testing-farm/reserve-system$"
+
+# test --test-filter option with --reserve extends test filter
+testinfo "test --test-filter option with --reserve extends test filter"
+testing-farm request --dry-run --reserve --compose Fedora-40 --test-filter "tag:smoke" | tee output
+tail -n+6 output | jq -r .test.fmf.test_filter | egrep "^tag:smoke \\| name:/testing-farm/reserve-system$"
+
+# test both --test and --test-filter options with --reserve
+testinfo "test both --test and --test-filter options with --reserve"
+testing-farm request --dry-run --reserve --compose Fedora-40 --test "one|two" --test-filter "tag:smoke" | tee output
+tail -n+6 output | jq -r .test.fmf.test_name | egrep "^one\\|two\\|/testing-farm/reserve-system$"
+tail -n+6 output | jq -r .test.fmf.test_filter | egrep "^tag:smoke \\| name:/testing-farm/reserve-system$"
+
+# test --test option without --reserve does not extend filter
+testinfo "test --test option without --reserve does not extend filter"
+testing-farm request --dry-run --compose Fedora-40 --test "my-test" | tee output
+tail -n+4 output | jq -r .test.fmf.test_name | egrep "^my-test$"
+
+# test --test-filter option without --reserve does not extend filter
+testinfo "test --test-filter option without --reserve does not extend filter"
+testing-farm request --dry-run --compose Fedora-40 --test-filter "tag:smoke" | tee output
+tail -n+4 output | jq -r .test.fmf.test_filter | egrep "^tag:smoke$"
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -213,3 +213,18 @@ echo "✅ Source/target URL separation configuration accepted"
 # Cleanup
 kill $MOCK_PID 2>/dev/null || true
 rm -f /tmp/mock_8001_requests.log /tmp/mock_8002_requests.log
+
+# test --test option with --reserve extends test filter
+testinfo "test --test option with --reserve extends test filter"
+testing-farm restart --dry-run --reserve --test "my-test" https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# test --test-filter option with --reserve extends test filter
+testinfo "test --test-filter option with --reserve extends test filter"
+testing-farm restart --dry-run --reserve --test-filter "tag:smoke" https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# test both --test and --test-filter options with --reserve
+testinfo "test both --test and --test-filter options with --reserve"
+testing-farm restart --dry-run --reserve --test "my-test" --test-filter "tag:smoke" https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output

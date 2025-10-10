@@ -492,6 +492,24 @@ def _localhost_ingress_rule(session: requests.Session) -> str:
         exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
 
 
+def _extend_test_name_for_reservation(tmt_test_name: Optional[str]) -> Optional[str]:
+    """
+    Extend test name to include the reservation test when --reserve is used.
+    """
+    if tmt_test_name:
+        return f"{tmt_test_name}|{RESERVE_TEST}"
+    return None
+
+
+def _extend_test_filter_for_reservation(tmt_test_filter: Optional[str]) -> Optional[str]:
+    """
+    Extend test filter to include the reservation test when --reserve is used.
+    """
+    if tmt_test_filter:
+        return f"{tmt_test_filter} | name:{RESERVE_TEST}"
+    return None
+
+
 def _add_reservation(
     ssh_public_keys: List[str],
     rules: Dict[str, Any],
@@ -1079,10 +1097,16 @@ def request(
         test["plan_filter"] = tmt_plan_filter
 
     if tmt_test_name:
-        test["test_name"] = tmt_test_name
+        if reserve:
+            test["test_name"] = _extend_test_name_for_reservation(tmt_test_name)
+        else:
+            test["test_name"] = tmt_test_name
 
     if tmt_test_filter:
-        test["test_filter"] = tmt_test_filter
+        if reserve:
+            test["test_filter"] = _extend_test_filter_for_reservation(tmt_test_filter)
+        else:
+            test["test_filter"] = tmt_test_filter
 
     if sti_playbooks:
         test["playbooks"] = sti_playbooks
@@ -1435,10 +1459,16 @@ def restart(
         test["ref"] = git_ref
 
     if tmt_test_name:
-        test["test_name"] = tmt_test_name
+        if reserve:
+            test["test_name"] = _extend_test_name_for_reservation(tmt_test_name)
+        else:
+            test["test_name"] = tmt_test_name
 
     if tmt_test_filter:
-        test["test_filter"] = tmt_test_filter
+        if reserve:
+            test["test_filter"] = _extend_test_filter_for_reservation(tmt_test_filter)
+        else:
+            test["test_filter"] = tmt_test_filter
 
     merge_sha_info = ""
     if git_merge_sha:

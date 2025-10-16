@@ -77,7 +77,7 @@ class OutputFormat(str, Enum):
 
     @staticmethod
     def available_formats():
-        return "text, json or table"
+        return "text, json, yaml or table"
 
 
 def exit_error(error: str) -> NoReturn:
@@ -408,3 +408,15 @@ def edit_with_editor(data: Any, description: Optional[str]) -> Any:
         # Read the modified content
         with open(temp_file.name, 'r') as modified_file:
             return modified_file.read()
+
+
+def handle_response_errors(response: requests.Response) -> None:
+    if response.status_code == 401:
+        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+    if response.status_code != 200:
+        exit_error(
+            f"Unexpected error {response.text}. "
+            f"Check {settings.STATUS_PAGE}. "
+            f"File an issue to {settings.ISSUE_TRACKER} if needed."
+        )

@@ -19,8 +19,16 @@ build:  ## Build the container image
 	poetry build
 	buildah bud --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
 
+build/fedora:  ## Build the Fedora-based container image
+	rm -rf $(PROJECT_ROOT)/dist
+	poetry build
+	buildah bud --layers -t $(IMAGE):fedora-$(IMAGE_TAG) -f container/Dockerfile.fedora .
+
 push:  ## Push the container image to quay.io
 	buildah push $(IMAGE):$(IMAGE_TAG)
+
+push/fedora:  ## Push the Fedora-based container image to quay.io
+	buildah push $(IMAGE):fedora-$(IMAGE_TAG)
 
 enter:  ## Run bash in the container with the code
 	podman run --rm -itv $$(pwd):/code:Z $(IMAGE):$(IMAGE_TAG) bash
@@ -36,10 +44,10 @@ tmt:  ## Run available tmt tests
 tox:  ## Run tox based tests
 	poetry run tox
 
-testing-farm: build push  ## Run the tmt tests in Testing Farm
+testing-farm: build build/fedora push push/fedora  ## Run the tmt tests in Testing Farm
 	testing-farm request -e IMAGE_TAG=$(IMAGE_TAG)
 
-test: build pre-commit tmt tox  ## Run all the tests
+test: build build/fedora pre-commit tmt tox  ## Run all the tests
 
 test-container:  ## Test the container via goss
 	if command -v goss; then \

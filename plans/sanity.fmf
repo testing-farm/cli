@@ -3,6 +3,7 @@ summary: Sanity test plan
 
 discover:
   how: fmf
+  filter: tag:-integration
 
 environment:
   IMAGE_TAG: latest

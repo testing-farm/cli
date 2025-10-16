@@ -496,7 +496,7 @@ def _extend_test_filter_for_reservation(tmt_test_filter: Optional[str]) -> Optio
     Extend test filter to include the reservation test when --reserve is used.
     """
     if tmt_test_filter:
-        return f"{tmt_test_filter} | name:{RESERVE_TEST}"
+        return f"{tmt_test_filter} | name:{RESERVE_TEST}"  # noqa: E231
     return None
 
 

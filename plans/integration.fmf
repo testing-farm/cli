@@ -1,0 +1,60 @@
+---
+summary: Integration test plan
+
+discover:
+  how: fmf
+  filter: tag:integration
+
+environment:
+  IMAGE_TAG: latest
+
+provision:
+  how: container
+  image: quay.io/testing-farm/cli:fedora-${IMAGE_TAG}
+
+prepare:
+  - name: Install dependencies
+    how: install
+    package:
+      - git
+      - make
+      - netcat
+      - jq
+      - poetry
+      - python3.9
+
+  # TODO: enable back once tmt does not clean tmt plan data
+  # - name: Install and start Testing Farm API
+  #   how: shell
+  #   script: |
+  #     # be verbose
+  #     set -x
+  #
+  #     # Use tmt tree to run the API
+  #     cd $TMT_TREE
+  #
+  #     # clone nucleus repository
+  #     git clone https://gitlab.com/testing-farm/nucleus
+  #
+  #     # start dev API
+  #     pushd nucleus/api
+  #     poetry env use python3.9
+  #     poetry install
+  #     make dev &> $TMT_PLAN_DATA/api.txt
+  #
+  #     # wait until API is available
+  #     for i in {1..10}; do
+  #       curl http://localhost:8001 && break
+  #       sleep 1
+  #     done
+
+execute:
+  how: tmt
+
+
+# TODO: enable back once tmt does not clean tmt plan data
+# finish:
+#   how: shell
+#   script: |
+#     cd $TMT_TREE/nucleus/api
+#     make dev/stop

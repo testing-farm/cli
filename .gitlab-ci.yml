@@ -43,8 +43,9 @@ variables:
         --environment GIT_URL=${CI_MERGE_REQUEST_PROJECT_URL:-$CI_PROJECT_URL} \
         --environment GIT_REF=${CI_MERGE_REQUEST_REF_PATH:-$CI_COMMIT_SHA} \
         --environment TARGET_IMAGE=$IMAGE:$IMAGE_TAG \
-        --environment CONTAINER_FILE=container/Dockerfile \
+        --environment CONTAINER_FILE=${CONTAINER_FILE:-container/Dockerfile} \
         --environment BUILD_ENV=container/build.env \
+        --environment "PLATFORMS='${PLATFORMS:-linux/amd64 linux/arm64}'" \
         --environment ENABLE_PUSH=yes \
         --secret AUTH_JSON=$QUAY_AUTH_JSON_BASE64 \
         --plan /container/build
@@ -52,11 +53,19 @@ variables:
 #
 # 📦 build
 #
-container:
+container/alpine:
   extends: [.merge-request, .container]
   stage: 📦 build
   variables:
     IMAGE_TAG: $CI_PIPELINE_ID
+
+container/fedora:
+  extends: [.merge-request, .container]
+  stage: 📦 build
+  variables:
+    IMAGE_TAG: fedora-$CI_PIPELINE_ID
+    CONTAINER_FILE: container/Dockerfile.fedora
+    PLATFORMS: linux/amd64
 
 #
 # 🔎 test
@@ -78,16 +87,16 @@ tox:
 tmt:
   extends: .merge-request
   stage: 🔎 test
-  needs: ["container"]
+  needs: ["container/alpine", "container/fedora"]
   image: quay.io/testing-farm/cli:latest
   script:
-    - testing-farm request -c distro=alpine -e IMAGE_TAG=$CI_PIPELINE_ID
+    - testing-farm request -e IMAGE_TAG=$CI_PIPELINE_ID
                            --git-url $CI_MERGE_REQUEST_PROJECT_URL
                            --git-ref $CI_MERGE_REQUEST_REF_PATH
 goss:
   extends: .merge-request
   stage: 🔎 test
-  needs: ["container"]
+  needs: ["container/alpine"]
   image: quay.io/testing-farm/cli:$CI_PIPELINE_ID
   script:
     - make goss

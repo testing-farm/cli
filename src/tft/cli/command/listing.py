@@ -7,7 +7,6 @@ import re
 import sys
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 from typing import Any, List, Optional, Tuple
 
 import pendulum
@@ -30,12 +29,14 @@ from tft.cli.config import settings
 from tft.cli.utils import (
     Age,
     OutputFormat,
+    StrEnum,
     authorization_headers,
     check_unexpected_arguments,
     console,
     exit_error,
     extract_uuid,
     handle_401_response,
+    handle_response_errors,
     install_http_retries,
     uuid_valid,
 )
@@ -44,7 +45,7 @@ from tft.cli.utils import (
 MAX_COMPOSE_LENGTH = 30
 
 
-class Ranch(str, Enum):
+class Ranch(StrEnum):
     public = "public"
     redhat = "redhat"
 
@@ -203,11 +204,11 @@ def render_reservation_table(requests_json: Any, show_utc: bool) -> None:
             os_compose = os_info.get('compose')
             if os_compose:
                 if len(os_compose) > MAX_COMPOSE_LENGTH:
-                    envs.append(f"{arch:>7} (<too-long>)")
+                    envs.append(f"{arch:>7} (<too-long>)")  # noqa: E231
                 else:
-                    envs.append(f"{arch:>7} ({os_compose})")
+                    envs.append(f"{arch:>7} ({os_compose})")  # noqa: E231
             else:
-                envs.append(f"{arch:>7} (container)")
+                envs.append(f"{arch:>7} (container)")  # noqa: E231
         envs = list(dict.fromkeys(envs))
 
         # Get time info
@@ -313,11 +314,11 @@ def render_table(
             if os_compose:
                 # Check if compose contains disk_image or boot_image and display <hidden-flasher-image> instead
                 if len(os_compose) > 20:
-                    envs.append(f"{arch:>7} (<too-long>)")
+                    envs.append(f"{arch:>7} (<too-long>)")  # noqa: E231
                 else:
-                    envs.append(f"{arch:>7} ({os_compose})")
+                    envs.append(f"{arch:>7} ({os_compose})")  # noqa: E231
             else:
-                envs.append(f"{arch:>7} (container)")
+                envs.append(f"{arch:>7} (container)")  # noqa: E231
         envs = list(dict.fromkeys(envs))  # Remove duplicates while preserving order
 
         git_type, git_url = shorten_git_url(url)
@@ -397,7 +398,7 @@ def _format_time(seconds):
     try:
         seconds = float(seconds)
         minutes, seconds = divmod(seconds, 60)
-        return f"{int(minutes)}m {seconds:.2f}s"
+        return f"{int(minutes)}m {seconds:.2f}s"  # noqa: E231
     except (ValueError, TypeError):
         return "N/A"
 
@@ -698,17 +699,6 @@ def listing(
     # Setting up HTTP retries
     session = requests.Session()
     install_http_retries(session)
-
-    def handle_response_errors(response: requests.Response) -> None:
-        if response.status_code == 401:
-            handle_401_response(response)
-
-        if response.status_code != 200:
-            exit_error(
-                f"Unexpected error {response.text}. "
-                f"Check {settings.STATUS_PAGE}. "
-                f"File an issue to {settings.ISSUE_TRACKER} if needed."
-            )
 
     # Handle minimum age
     if min_age:

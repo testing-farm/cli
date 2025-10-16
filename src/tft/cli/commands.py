@@ -15,7 +15,6 @@ import textwrap
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -27,6 +26,7 @@ from rich.table import Table  # type: ignore
 
 from tft.cli.config import settings
 from tft.cli.utils import (
+    StrEnum,
     artifacts,
     authorization_headers,
     check_unexpected_arguments,
@@ -84,16 +84,16 @@ SSH_RESERVATION_OPTIONS = (
 SECURITY_GROUP_RULE_FORMAT = re.compile(r"(tcp|ip|icmp|udp|-1|[0-255]):(.*):(\d{1,5}-\d{1,5}|\d{1,5}|-1)")
 
 
-class WatchFormat(str, Enum):
+class WatchFormat(StrEnum):
     text = 'text'
     json = 'json'
 
 
-class PipelineType(str, Enum):
+class PipelineType(StrEnum):
     tmt_multihost = "tmt-multihost"
 
 
-class PipelineState(str, Enum):
+class PipelineState(StrEnum):
     new = "new"
     queued = "queued"
     running = "running"
@@ -102,7 +102,7 @@ class PipelineState(str, Enum):
     canceled = "canceled"
 
 
-class Ranch(str, Enum):
+class Ranch(StrEnum):
     public = "public"
     redhat = "redhat"
 
@@ -497,7 +497,7 @@ def _extend_test_filter_for_reservation(tmt_test_filter: Optional[str]) -> Optio
     Extend test filter to include the reservation test when --reserve is used.
     """
     if tmt_test_filter:
-        return f"{tmt_test_filter} | name:{RESERVE_TEST}"
+        return f"{tmt_test_filter} | name:{RESERVE_TEST}"  # noqa: E231
     return None
 
 

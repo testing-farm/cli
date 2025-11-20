@@ -274,6 +274,7 @@ OPTION_REPOSITORY: List[str] = typer.Option(
 OPTION_REPOSITORY_FILE: List[str] = typer.Option(
     None,
     help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+    rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_DRY_RUN: bool = typer.Option(
     False, help="Do not submit a request to Testing Farm, just print it.", rich_help_panel=RESERVE_PANEL_GENERAL

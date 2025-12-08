@@ -618,7 +618,7 @@ def _parse_security_group_rules(ingress_rules: List[str], egress_rules: List[str
     return security_group_rules
 
 
-def _parse_xunit(xunit: str):
+def _parse_xunit(xunit: str, multihost: bool = False):
     """
     A helper that parses xunit file into sets of passed_plans/failed_plans/errored_plans per arch.
 
@@ -642,9 +642,12 @@ def _parse_xunit(xunit: str):
 
     results_root = ET.fromstring(xunit)
     for plan in results_root.findall('./testsuite'):
-        # Try to get information about the environment (stored under ./testing-environment), may be
-        # absent if state is undefined
-        testing_environment: Optional[ET.Element] = plan.find('./testing-environment[@name="requested"]')
+        testing_environment = plan.find(
+            './testing-environment[@name="requested"]'
+            if not multihost
+            else './guest/testing-environment[@name="provisioned"]'
+        )
+
         if not testing_environment:
             console_stderr.print(
                 f'Could not find env specifications for {plan.get("name")}, assuming fail for all arches'
@@ -679,6 +682,7 @@ def _get_request_summary(request: dict, session: requests.Session):
     artifacts_url = (request.get('run') or {}).get('artifacts')
     xpath_url = f'{artifacts_url}/results.xml' if artifacts_url else ''
     xunit = (request.get('result') or {}).get('xunit') or '<testsuites></testsuites>'
+    multihost = ((request.get('settings') or {}).get('pipeline') or {}).get('type') == 'tmt-multihost'
     if state not in ['queued', 'running'] and artifacts_url:
         # NOTE(ivasilev) xunit can be None (ex. in case of timed out requests) so let's fetch results.xml and use it
         # as source of truth
@@ -688,7 +692,7 @@ def _get_request_summary(request: dict, session: requests.Session):
                 xunit = response.text
         except requests.exceptions.ConnectionError:
             console_stderr.print("Could not get xunit results")
-    passed_plans, failed_plans, skipped_plans, errored_plans = _parse_xunit(xunit)
+    passed_plans, failed_plans, skipped_plans, errored_plans = _parse_xunit(xunit, multihost=multihost)
     overall = (request.get("result") or {}).get("overall")
     arches_requested = [env['arch'] for env in request['environments_requested']]
 

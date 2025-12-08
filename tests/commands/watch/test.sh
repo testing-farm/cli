@@ -50,5 +50,13 @@ testinfo "custom API url"
 TESTING_FARM_API_URL=https://api.stage.testing-farm.io timeout 1 testing-farm watch --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
 egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
 
+# multihost test
+testinfo "multihost test"
+testing-farm watch --id 51335c9e-355e-46ff-a915-76194898c29d | tee output
+egrep "^🔎 api https://api.dev.testing-farm.io/v0.1/requests/51335c9e-355e-46ff-a915-76194898c29d$" output
+egrep "^🚢 artifacts https://artifacts.dev.testing-farm.io/51335c9e-355e-46ff-a915-76194898c29d$" output
+egrep "^✅ tests passed$" output
+egrep "^│ /testing-farm/multihost/basic │ pass   │$" output
+
 # remove temporary directory
 rm -rf $TMPDIR

@@ -163,43 +163,32 @@ ARGUMENT_TARGET_API_TOKEN: str = typer.Argument(
 OPTION_TMT_PLAN_NAME: Optional[str] = typer.Option(
     None,
     "--plan",
-    help=(
-        'Select plans to be executed. '
-        'Passed as `--name` option to the `tmt plan` command. '
-        'Can be a regular expression.'
-    ),
+    help=('A regular expression to select plans to be executed. Passed to the `tmt plan ls` command. '),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
 OPTION_TMT_PLAN_FILTER: Optional[str] = typer.Option(
     None,
     "--plan-filter",
     help=(
-        'Filter tmt plans. '
-        'Passed as `--filter` option to the `tmt plan` command. '
-        'By default, `enabled:true` filter is applied. '
-        'Plan filtering is similar to test filtering, '
-        'see https://tmt.readthedocs.io/en/stable/examples.html#filter-tests for more information.'
+        'Apply an advanced filter using key:value pairs and logical operators to filter plans. '
+        'Passed as `--filter` option to the `tmt plan ls` command. '
+        'See `pydoc fmf.filter` for detailed documentation on the syntax.'
     ),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
 OPTION_TMT_TEST_NAME: Optional[str] = typer.Option(
     None,
     "--test",
-    help=(
-        'Select tests to be executed. '
-        'Passed as `--name` option to the `tmt test` command. '
-        'Can be a regular expression.'
-    ),
+    help=('Regular expression to select tests to be executed. Passed to the `tmt test ls` command. '),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
 OPTION_TMT_TEST_FILTER: Optional[str] = typer.Option(
     None,
     "--test-filter",
     help=(
-        'Filter tmt tests. '
-        'Passed as `--filter` option to the `tmt test` command. '
-        'It overrides any test filter defined in the plan. '
-        'See https://tmt.readthedocs.io/en/stable/examples.html#filter-tests for more information.'
+        'Apply an advanced filter using key:value pairs and logical operators to filter tests. '
+        'Passed as `--filter` option to the `tmt test ls` command. '
+        'See `pydoc fmf.filter` for detailed documentation on the syntax.'
     ),
     rich_help_panel=REQUEST_PANEL_TMT,
 )

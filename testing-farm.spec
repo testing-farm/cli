@@ -9,6 +9,7 @@ Source0:        %{pypi_source tft_cli}
 
 BuildArch:      noarch
 BuildRequires:  python3-devel
+BuildRequires:  tomcli
 
 %description
 CLI tool for interacting with the Testing Farm API.
@@ -17,6 +18,11 @@ CLI tool for interacting with the Testing Farm API.
 %autosetup -n tft_cli-%{version}
 
 %generate_buildrequires
+# Drop version pinning (we use the versions available in Fedora)
+for DEP in $(tomcli get -F newline-keys pyproject.toml tool.poetry.dependencies)
+do
+    tomcli set pyproject.toml replace tool.poetry.dependencies.${DEP} ".*" "*"
+done
 %pyproject_buildrequires
 
 %build

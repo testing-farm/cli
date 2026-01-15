@@ -40,8 +40,8 @@ variables:
       testing-farm request \
         --git-url https://gitlab.com/testing-farm/tests.git \
         --git-ref main \
-        --environment GIT_URL=${CI_MERGE_REQUEST_PROJECT_URL:-CI_PROJECT_URL} \
-        --environment GIT_REF=${CI_MERGE_REQUEST_REF_PATH:-CI_COMMIT_SHA} \
+        --environment GIT_URL=${CI_MERGE_REQUEST_PROJECT_URL:-$CI_PROJECT_URL} \
+        --environment GIT_REF=${CI_MERGE_REQUEST_REF_PATH:-$CI_COMMIT_SHA} \
         --environment TARGET_IMAGE=$IMAGE:$IMAGE_TAG \
         --environment CONTAINER_FILE=container/Dockerfile \
         --environment BUILD_ENV=container/build.env \

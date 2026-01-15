@@ -180,19 +180,15 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
         elif value.lower() in ['false']:
             value_mixed = False
 
-        container[path_splitted.pop()] = value_mixed
+        final_key = path_splitted.pop()
 
-        # Only process additional path elements if they exist
-        if path_splitted:
-            next_path = path_splitted.pop()
-
-            # handle compatible.distro
-            if next_path == 'distro':
-                container[next_path] = (
-                    container[next_path].append(value_mixed) if next_path in container else [value_mixed]
-                )
-            else:
-                container[next_path] = value_mixed
+        # Handle compatible.distro as a list
+        if final_key == 'distro':
+            if final_key not in container:
+                container[final_key] = []
+            container[final_key].append(value_mixed)
+        else:
+            container[final_key] = value_mixed
 
     return constraints
 

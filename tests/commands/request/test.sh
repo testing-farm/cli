@@ -390,5 +390,11 @@ testinfo "test --test-filter option without --reserve does not extend filter"
 testing-farm request --dry-run --compose Fedora-40 --test-filter "tag:smoke" | tee output
 tail -n+4 output | jq -r .test.fmf.test_filter | egrep "^tag:smoke$"
 
+# test compatible.distro as a list
+testinfo "test compatible.distro as a list"
+testing-farm request --dry-run --compose Fedora --hardware compatible.distro='rhel-8.6' --hardware compatible.distro='rhel-8.7' | tee output
+tail -n+4 output | jq -r '.environments[].hardware.compatible.distro[0]' | egrep '^rhel-8.6$'
+tail -n+4 output | jq -r '.environments[].hardware.compatible.distro[1]' | egrep '^rhel-8.7$'
+
 # remove temporary directory
 rm -rf $TMPDIR

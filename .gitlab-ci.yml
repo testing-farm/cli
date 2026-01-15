@@ -6,6 +6,9 @@ stages:
 
 image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 
+variables:
+  IMAGE: quay.io/testing-farm/cli
+
 #
 # Mark tests to run for merge requests
 #
@@ -31,11 +34,20 @@ image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 # Common container build job
 #
 .container:
+  image: quay.io/testing-farm/cli:latest
   script:
-    - dnf -y install make poetry python python3-poetry-dynamic-versioning
-    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
-    - make build
-    - make push
+    - >
+      testing-farm request \
+        --git-url https://gitlab.com/testing-farm/tests.git \
+        --git-ref main \
+        --environment GIT_URL=${CI_MERGE_REQUEST_PROJECT_URL:-CI_PROJECT_URL} \
+        --environment GIT_REF=${CI_MERGE_REQUEST_REF_PATH:-CI_COMMIT_SHA} \
+        --environment TARGET_IMAGE=$IMAGE:$IMAGE_TAG \
+        --environment CONTAINER_FILE=container/Dockerfile \
+        --environment BUILD_ENV=container/build.env \
+        --environment ENABLE_PUSH=yes \
+        --secret AUTH_JSON=$QUAY_AUTH_JSON_BASE64 \
+        --plan /container/build
 
 #
 # 📦 build
@@ -43,7 +55,6 @@ image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
 container:
   extends: [.merge-request, .container]
   stage: 📦 build
-  image: quay.io/buildah/stable:latest
   variables:
     IMAGE_TAG: $CI_PIPELINE_ID
 
@@ -87,21 +98,18 @@ goss:
 publish/container/latest:
   extends: [.main, .container]
   stage: 🚀 deploy
-  image: quay.io/buildah/stable:latest
   variables:
     IMAGE_TAG: latest
 
 publish/container/version:
   extends: [.main, .container]
   stage: 🚀 deploy
-  image: quay.io/buildah/stable:latest
   before_script:
     - export IMAGE_TAG="v$(poetry version -s | tr '+' '.')-$CI_COMMIT_SHORT_SHA"
 
 publish/container/tag:
   extends: [.tag, .container]
   stage: 🚀 deploy
-  image: quay.io/buildah/stable:latest
   before_script:
     - export IMAGE_TAG="v$(poetry version -s)"
 

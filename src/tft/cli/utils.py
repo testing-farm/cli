@@ -20,6 +20,7 @@ import requests
 import requests.adapters
 import typer
 from click.core import ParameterSource
+from dotenv import dotenv_values
 from rich.console import Console
 from ruamel.yaml import YAML  # type: ignore
 from urllib3 import Retry
@@ -211,25 +212,43 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
     return constraints
 
 
-def options_from_file(filepath) -> Dict[str, str]:
-    """Read environment variables from a yaml file."""
+def options_from_yaml(filepath: str) -> Dict[str, Optional[str]]:
+    """Read environment variables from yaml content."""
 
     with open(filepath, 'r') as file:
-        try:
-            yaml = YAML(typ="safe").load(file.read())
-        except Exception:
-            exit_error(f"Failed to load variables from yaml file {filepath}.")
+        content = file.read()
 
-        if not yaml:  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
-            return {}
+    try:
+        yaml = YAML(typ="safe").load(content)
+    except Exception:
+        exit_error(f"Failed to load variables from yaml file {filepath}.")
 
-        if not isinstance(yaml, dict):  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
-            exit_error(f"Environment file {filepath} is not a dict.")
+    if not yaml:  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+        return {}
 
-        if any([isinstance(value, (list, dict)) for value in yaml.values()]):
-            exit_error(f"Values of environment file {filepath} are not primitive types.")
+    if not isinstance(yaml, dict):  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+        exit_error(f"Environment file {filepath} is not a dict.")
 
-        return yaml  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+    if any([isinstance(value, (list, dict)) for value in yaml.values()]):
+        exit_error(f"Values of environment file {filepath} are not primitive types.")
+
+    return yaml  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+
+
+def options_from_dotenv(filepath: str) -> Dict[str, Optional[str]]:
+    try:
+        return dotenv_values(filepath)
+    except Exception:
+        exit_error(f"Failed to load variables from dotenv file {filepath}.")
+
+
+def options_from_file(filepath) -> Dict[str, Optional[str]]:
+    """Read environment variables from a yaml or dotenv file."""
+    # Determine format based on file extension
+    if filepath.endswith('.yaml') or filepath.endswith('.yml'):
+        return options_from_yaml(filepath)
+
+    return options_from_dotenv(filepath)
 
 
 def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:

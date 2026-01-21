@@ -151,6 +151,15 @@ testing-farm request --environment @$TEST_DATA/env5.yaml --dry-run | tee output
 tail -n+4 output | jq -r .environments[0].variables | egrep '"foo": "bar"'
 tail -n+4 output | jq -r .environments[0].variables | egrep '"bar": 123'
 
+# environment from file - dotenv format
+testinfo "test environment from file - dotenv format"
+testing-farm request --environment @$TEST_DATA/env6.env --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].variables | egrep '"FOO": "bar"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"BAR": "123"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"QUOTED_DOUBLE": "hello world"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"QUOTED_SINGLE": "single quoted"'
+tail -n+4 output | jq -r .environments[0].variables | egrep '"EMPTY_VALUE": ""'
+
 # multiple environment options under single --environment option
 testinfo "multiple environment options under single --environment option"
 testing-farm request --environment 'aaa=bbb "foo foo=bar bar"' --environment 'foo=bar' --dry-run | tee output

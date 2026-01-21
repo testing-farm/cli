@@ -274,14 +274,14 @@ OPTION_VARIABLES: Optional[List[str]] = typer.Option(
     "-e",
     "--environment",
     metavar="key=value|@file",
-    help="Variables to pass to the test environment. The @ prefix marks a yaml file to load.",
+    help="Variables to pass to the test environment. The @ prefix marks a yaml or dotenv file to load.",
 )
 OPTION_SECRETS: Optional[List[str]] = typer.Option(
     None,
     "-s",
     "--secret",
     metavar="key=value|@file",
-    help="Secret variables to pass to the test environment. The @ prefix marks a yaml file to load.",
+    help="Secret variables to pass to the test environment. The @ prefix marks a yaml or dotenv file to load.",
 )
 OPTION_HARDWARE: List[str] = typer.Option(
     None,

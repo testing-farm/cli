@@ -88,6 +88,14 @@ testing-farm request
 test $? == 255
 set -e
 
+# test expired token with mock server
+testinfo "token expired"
+export TESTING_FARM_API_URL="http://localhost:10001"
+{ echo -ne "HTTP/1.0 401 Unauthorized\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Token has expired\"}"; } | nc -N -l 10001 &
+testing-farm request --git-url https://example.com/repo --compose Fedora | tee output
+egrep "⛔ API token has expired. Please generate a new token at https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html and update your TESTING_FARM_API_TOKEN." output
+unset TESTING_FARM_API_URL
+
 # checkout a ref rather, test autodetection working
 testinfo "test commit SHA detection"
 COMMIT_SHA=$(git rev-parse HEAD)

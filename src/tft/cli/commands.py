@@ -36,6 +36,7 @@ from tft.cli.utils import (
     edit_with_editor,
     exit_error,
     extract_uuid,
+    handle_401_response,
     hw_constraints,
     install_http_retries,
     normalize_multistring_option,
@@ -1294,7 +1295,7 @@ def request(
     # handle errors
     response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 400:
         exit_error(
@@ -1406,7 +1407,7 @@ def restart(
     response = session.get(get_url, headers=authorization_headers(effective_source_api_token))
 
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     # The API token is valid, but it doesn't own the request
     if response.status_code == 403:
@@ -1615,7 +1616,7 @@ def restart(
     # handle errors
     response = session.post(post_url, json=request, headers=authorization_headers(effective_target_api_token))
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 400:
         exit_error(
@@ -1713,7 +1714,7 @@ def run(
     # handle errors
     response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 400:
         exit_error(f"Request is invalid. Please file an issue to {settings.ISSUE_TRACKER}")
@@ -2017,7 +2018,7 @@ def reserve(
     # handle errors
     response = session.post(post_url, json=request, headers=authorization_headers(api_token))
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 400:
         exit_error(
@@ -2199,7 +2200,7 @@ def cancel(
     response = session.delete(request_url, headers=authorization_headers(api_token))
 
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 403:
         exit_error(
@@ -2278,7 +2279,7 @@ def encrypt(
 
     # handle errors
     if response.status_code == 401:
-        exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+        handle_401_response(response)
 
     if response.status_code == 400:
         exit_error(

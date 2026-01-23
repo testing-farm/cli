@@ -34,6 +34,7 @@ from tft.cli.utils import (
     console,
     exit_error,
     extract_uuid,
+    handle_401_response,
     install_http_retries,
     uuid_valid,
 )
@@ -699,7 +700,7 @@ def listing(
 
     def handle_response_errors(response: requests.Response) -> None:
         if response.status_code == 401:
-            exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+            handle_401_response(response)
 
         if response.status_code != 200:
             exit_error(
@@ -722,7 +723,7 @@ def listing(
         try:
             response = session.get(whoami_url, headers=authorization_headers(api_token))
             if response.status_code == 401:
-                exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+                handle_401_response(response)
             elif response.status_code != 200:
                 exit_error(
                     f"Token validation failed with status {response.status_code}. "

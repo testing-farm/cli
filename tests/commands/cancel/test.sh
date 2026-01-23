@@ -43,6 +43,12 @@ testinfo "token invalid"
 testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# token expired
+testinfo "token expired"
+{ echo -ne "HTTP/1.0 401 Unauthorized\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Token has expired\"}"; } | nc -N -l 10001 &
+testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token has expired. Please generate a new token at https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html and update your TESTING_FARM_API_TOKEN." output
+
 # invalid request ID
 testinfo "request ID not found"
 { echo -ne "HTTP/1.0 404 Not Found"; } | nc -N -l 10001 &

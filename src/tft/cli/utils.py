@@ -86,6 +86,24 @@ def exit_error(error: str) -> NoReturn:
     raise typer.Exit(code=255)
 
 
+def handle_401_response(response: requests.Response) -> NoReturn:
+    """Handle 401 Unauthorized responses with appropriate error message.
+
+    Differentiates between expired tokens and invalid tokens based on
+    the API response message.
+    """
+    try:
+        error_msg = response.json().get('message', '')
+        if error_msg == "Token has expired":
+            exit_error(
+                f"API token has expired. Please generate a new token at "
+                f"{settings.ONBOARDING_DOCS} and update your TESTING_FARM_API_TOKEN."
+            )
+    except requests.exceptions.JSONDecodeError:
+        pass
+    exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+
 def cmd_output_or_exit(command: str, error: str) -> str:
     """Return local command output or exit with given error message"""
     try:

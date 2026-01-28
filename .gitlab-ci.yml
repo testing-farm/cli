@@ -121,3 +121,15 @@ publish/pypi:
     - dnf -y install python3-poetry-dynamic-versioning
     - poetry config repositories.tft-cli https://upload.pypi.org/legacy/
     - poetry publish --build --repository tft-cli
+
+trivy-scan:
+  stage: 🔎 test
+  needs: []
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs --exit-code 1 --scanners vuln,secret --severity UNKNOWN,MEDIUM,HIGH,CRITICAL .
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: '$CI_COMMIT_BRANCH == "main"'

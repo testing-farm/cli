@@ -326,7 +326,7 @@ testing-farm request --sanity --plan abc | tee output
 egrep "⛔ The option --sanity is mutually exclusive with --git-url and --plan." output
 
 # extra args
-for step in discover prepare finish; do
+for step in discover prepare report finish; do
   testinfo "tmt $step extra args"
   testing-farm request --dry-run --tmt-$step "--insert --script \"echo hello\"" --tmt-$step second | tee output
   tail -n+4 output | jq -r .environments[].tmt.extra_args.$step[0] | egrep "^--insert --script \"echo hello\"$"
@@ -334,9 +334,10 @@ for step in discover prepare finish; do
 done
 
 testinfo "tmt extra args together"
-testing-farm request --dry-run --tmt-discover discover-args --tmt-prepare prepare-args --tmt-finish finish-args | tee output
+testing-farm request --dry-run --tmt-discover discover-args --tmt-prepare prepare-args --tmt-report report-args --tmt-finish finish-args | tee output
 tail -n+4 output | jq -r .environments[].tmt.extra_args.prepare[] | egrep "^prepare-args$"
 tail -n+4 output | jq -r .environments[].tmt.extra_args.discover[] | egrep "^discover-args$"
+tail -n+4 output | jq -r .environments[].tmt.extra_args.report[] | egrep "^report-args$"
 tail -n+4 output | jq -r .environments[].tmt.extra_args.finish[] | egrep "^finish-args$"
 
 # test multiple network types

@@ -981,6 +981,7 @@ def request(
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     reserve: bool = OPTION_RESERVE,
     ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
@@ -1158,7 +1159,7 @@ def request(
         if tmt_environment:
             environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
 
-        if tmt_discover or tmt_prepare or tmt_finish:
+        if tmt_discover or tmt_prepare or tmt_report or tmt_finish:
             if "extra_args" not in environment["tmt"]:
                 environment["tmt"]["extra_args"] = {}
 
@@ -1167,6 +1168,9 @@ def request(
 
         if tmt_prepare:
             environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+        if tmt_report:
+            environment["tmt"]["extra_args"]["report"] = tmt_report
 
         if tmt_finish:
             environment["tmt"]["extra_args"]["finish"] = tmt_finish
@@ -1346,6 +1350,7 @@ def restart(
     tmt_path: Optional[str] = OPTION_TMT_PATH,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
@@ -1490,7 +1495,7 @@ def restart(
         for environment in request['environments']:
             environment["pool"] = pool
 
-    if tmt_discover or tmt_prepare or tmt_finish:
+    if tmt_discover or tmt_prepare or tmt_report or tmt_finish:
         for environment in request["environments"]:
             if "tmt" not in environment:
                 environment["tmt"] = {"extra_args": {}}
@@ -1504,6 +1509,10 @@ def restart(
     if tmt_prepare:
         for environment in request["environments"]:
             environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+    if tmt_report:
+        for environment in request["environments"]:
+            environment["tmt"]["extra_args"]["report"] = tmt_report
 
     if tmt_finish:
         for environment in request["environments"]:
@@ -1833,6 +1842,7 @@ def reserve(
     tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
+    tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     dry_run: bool = OPTION_DRY_RUN,
     post_install_script: Optional[str] = OPTION_POST_INSTALL_SCRIPT,
@@ -1934,7 +1944,7 @@ def reserve(
     if post_install_script:
         environment["settings"]["provisioning"]["post_install_script"] = post_install_script
 
-    if tmt_discover or tmt_prepare or tmt_finish:
+    if tmt_discover or tmt_prepare or tmt_report or tmt_finish:
         environment["tmt"] = {"extra_args": {}}
 
         if tmt_discover:
@@ -1942,6 +1952,9 @@ def reserve(
 
         if tmt_prepare:
             environment["tmt"]["extra_args"]["prepare"] = tmt_prepare
+
+        if tmt_report:
+            environment["tmt"]["extra_args"]["report"] = tmt_report
 
         if tmt_finish:
             environment["tmt"]["extra_args"]["finish"] = tmt_finish

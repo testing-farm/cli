@@ -24,6 +24,7 @@ from tft.cli.commands import (
     ARGUMENT_API_URL,
     ARGUMENT_INTERNAL_API_URL,
     PipelineState,
+    check_token,
 )
 from tft.cli.config import settings
 from tft.cli.utils import (
@@ -715,7 +716,7 @@ def listing(
 
     # check for token
     if not api_token and (mine or show_secrets):
-        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
+        api_token = check_token(api_url, api_token)
 
     # Validate token if provided
     if api_token:

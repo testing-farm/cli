@@ -75,6 +75,35 @@ Required only if you will be submitting requests to Testing Farm.
 
 Before using the CLI for submitting requests, you will need to https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html[onboard and get an API key].
 
+=== API Token Configuration
+
+The CLI requires an API token for most operations. There are two ways to provide it:
+
+==== Environment Variable
+
+Set the `TESTING_FARM_API_TOKEN` environment variable:
+
+[source,shell]
+....
+export TESTING_FARM_API_TOKEN=<your-api-token>
+....
+
+==== System Keyring
+
+Alternatively, you can store the token in your system keyring. The CLI will automatically retrieve it if the environment variable is not set.
+
+To store the token in the keyring:
+
+[source,shell]
+....
+keyring set https://api.dev.testing-farm.io/v0.1 api-token
+....
+
+[NOTE]
+====
+The URL should match the API endpoint you're using. For the production Testing Farm, use `https://api.dev.testing-farm.io/v0.1`.
+====
+
 == Usage
 
 === Printing tool version

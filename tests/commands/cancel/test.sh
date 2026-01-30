@@ -27,7 +27,7 @@ egrep "^⛔ Could not find a valid Testing Farm request id in '40cafaa3-0efa-4ab
 # valid request id, no token
 testinfo "valid request request id, no token"
 testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
-egrep "No API token found in the environment, please export 'TESTING_FARM_API_TOKEN' variable." output
+egrep "No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable or store it in keyring" output
 
 # invalid arguments
 testing-farm cancel 40cafaa3-0efa-4abf-a20b-a6ad87e84527 invalid |& tee output

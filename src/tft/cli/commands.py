@@ -901,6 +901,27 @@ def version():
     console.print(f"{cli_version}")
 
 
+def check_token(api_url: str, api_token: Optional[str]):
+    """Check for API token, falling back to keyring if not provided. Exits on failure."""
+    if not api_token:
+        try:
+            import keyring
+
+            api_token = keyring.get_password(api_url, 'api-token')
+        except ImportError as e:
+            console.print(f"⚠️  keyring import error: {e}", style="yellow")
+        except Exception as e:
+            console.print(f"⚠️  keyring error: {e}", style="yellow")
+
+        if not api_token:
+            exit_error(
+                f"No API token found, export `TESTING_FARM_API_TOKEN` environment variable "
+                f"or store it in keyring using `keyring set {api_url} api-token`."
+            )
+
+    return api_token
+
+
 def request(
     context: typer.Context,
     api_url: str = ARGUMENT_API_URL,
@@ -1001,9 +1022,7 @@ def request(
 
     git_available = bool(shutil.which("git"))
 
-    # check for token
-    if not api_token:
-        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
+    api_token = check_token(api_url, api_token)
 
     if not compose and arches != ['x86_64']:
         exit_error(
@@ -1672,9 +1691,7 @@ def run(
     Run an arbitrary script via Testing Farm.
     """
 
-    # check for token
-    if not api_token:
-        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
+    api_token = check_token(api_url, api_token)
 
     # create request
     request = TestingFarmRequestV1
@@ -1876,9 +1893,7 @@ def reserve(
     # Accept these arguments only via environment variables
     check_unexpected_arguments(context, "api_url", "api_token")
 
-    # check for token
-    if not settings.API_TOKEN:
-        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable.")
+    api_token = check_token(api_url, api_token)
 
     pool_info = f"via pool [blue]{pool}[/blue]" if pool else ""
     console.print(f"💻 [blue]{compose}[/blue] on [blue]{arch}[/blue] {pool_info}")
@@ -2198,9 +2213,7 @@ def cancel(
     # Extract the UUID from the request_id string
     _request_id = extract_uuid(request_id)
 
-    if not api_token:
-        exit_error("No API token found in the environment, please export 'TESTING_FARM_API_TOKEN' variable.")
-        return
+    api_token = check_token(api_url, api_token)
 
     # Construct URL to the internal API
     request_url = urllib.parse.urljoin(str(api_url), f"v0.1/requests/{_request_id}")
@@ -2258,9 +2271,7 @@ def encrypt(
     # Accept these arguments only via environment variables
     check_unexpected_arguments(context, "api_url", "api_token")
 
-    # check for token
-    if not api_token:
-        exit_error("No API token found, export `TESTING_FARM_API_TOKEN` environment variable")
+    api_token = check_token(api_url, api_token)
 
     git_available = bool(shutil.which("git"))
 

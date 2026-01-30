@@ -212,8 +212,12 @@ def hw_constraints(hardware: List[str]) -> Dict[Any, Any]:
     return constraints
 
 
-def options_from_yaml(filepath: str) -> Dict[str, Optional[str]]:
-    """Read environment variables from yaml content."""
+def options_from_yaml(filepath: str) -> Optional[Dict[str, Optional[str]]]:
+    """Read environment variables from yaml content.
+
+    Raises:
+        ValueError: If the file cannot be parsed as YAML or has invalid structure.
+    """
 
     with open(filepath, 'r') as file:
         content = file.read()
@@ -221,34 +225,42 @@ def options_from_yaml(filepath: str) -> Dict[str, Optional[str]]:
     try:
         yaml = YAML(typ="safe").load(content)
     except Exception:
-        exit_error(f"Failed to load variables from yaml file {filepath}.")
+        return None
 
-    if not yaml:  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+    if not yaml:
         return {}
 
-    if not isinstance(yaml, dict):  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+    if not isinstance(yaml, dict):
         exit_error(f"Environment file {filepath} is not a dict.")
 
     if any([isinstance(value, (list, dict)) for value in yaml.values()]):
         exit_error(f"Values of environment file {filepath} are not primitive types.")
 
-    return yaml  # pyre-ignore[61]  # pyre ignores NoReturn in exit_error
+    return yaml
 
 
 def options_from_dotenv(filepath: str) -> Dict[str, Optional[str]]:
+    """Read environment variables from dotenv file.
+
+    Raises:
+        Exception: If the file cannot be parsed as dotenv.
+    """
     try:
         return dotenv_values(filepath)
     except Exception:
-        exit_error(f"Failed to load variables from dotenv file {filepath}.")
+        exit_error(f"Failed to load variables from file {filepath}.")
 
 
 def options_from_file(filepath) -> Dict[str, Optional[str]]:
     """Read environment variables from a yaml or dotenv file."""
-    # Determine format based on file extension
-    if filepath.endswith('.yaml') or filepath.endswith('.yml'):
-        return options_from_yaml(filepath)
+    # Try to load from yaml first
+    # If that fails, try to load from dotenv
+    yaml = options_from_yaml(filepath)
 
-    return options_from_dotenv(filepath)
+    if yaml is None:
+        return options_from_dotenv(filepath)
+
+    return yaml
 
 
 def options_to_dict(name: str, options: List[str]) -> Dict[str, str]:

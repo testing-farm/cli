@@ -911,7 +911,9 @@ def check_token(api_url: str, api_token: Optional[str]):
         except ImportError as e:
             console.print(f"⚠️  keyring import error: {e}", style="yellow")
         except Exception as e:
-            console.print(f"⚠️  keyring error: {e}", style="yellow")
+            # inside container we do not support keyring, do not print an error
+            if not os.path.exists("/run/.containerenv"):
+                console.print(f"⚠️  keyring error: {e}", style="yellow")
 
         if not api_token:
             exit_error(

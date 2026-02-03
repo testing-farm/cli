@@ -126,8 +126,7 @@ publish/pypi:
   extends: .tag
   stage: 🚀 deploy
   script:
-    # TODO: remove once in python ci image
-    - dnf -y install python3-poetry-dynamic-versioning
+    - poetry self add poetry-dynamic-versioning
     - poetry config repositories.tft-cli https://upload.pypi.org/legacy/
     - poetry publish --build --repository tft-cli
 

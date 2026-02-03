@@ -23,7 +23,7 @@ fi
 # no token
 testinfo "no token specified"
 testing-farm reserve | tee output
-egrep "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable or store it in keyring" output
+egrep "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable" output
 
 # test goes only with invalid token
 export TESTING_FARM_API_TOKEN=invalid

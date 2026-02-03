@@ -17,7 +17,7 @@ grep -E "Missing argument 'COMMAND...'." output
 # valid command, no token
 testinfo "valid command, no token"
 testing-farm run echo hello | tee output
-grep -E "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable or store it in keyring" output
+grep -E "^⛔ No API token found, export \`TESTING_FARM_API_TOKEN\` environment variable" output
 
 export TESTING_FARM_API_TOKEN=token
 

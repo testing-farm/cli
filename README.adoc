@@ -92,6 +92,11 @@ export TESTING_FARM_API_TOKEN=<your-api-token>
 
 Alternatively, you can store the token in your system keyring. The CLI will automatically retrieve it if the environment variable is not set.
 
+[NOTE]
+====
+System keyring is not available when running the CLI via the container wrapper. Use the environment variable method instead.
+====
+
 To store the token in the keyring:
 
 [source,shell]

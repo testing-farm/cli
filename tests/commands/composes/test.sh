@@ -2,32 +2,6 @@
 
 testinfo() { printf "\n== TEST: $@ ==================\n"; }
 
-# WORKAROUND: tmt bug causing TMT_TREE to be resynced and lost
-
-# Use tmt tree to run the API
-cd "$TMT_TREE"
-
-# clone nucleus repository
-git clone https://gitlab.com/testing-farm/nucleus
-
-# start dev API
-pushd nucleus/api
-poetry env use python3.9
-poetry install
-
-trap 'status=$?; cd $TMT_TREE/nucleus/api && make dev/stop; exit $status' EXIT SIGINT
-if ! make dev &> "$TMT_PLAN_DATA/api.txt"; then
-    echo "[E] Failed to start API."
-    cat "$TMT_PLAN_DATA/api.txt"
-    exit 1
-fi
-
-# wait until API is available
-for _ in {1..10}; do
-  curl http://localhost:8001 && break
-  sleep 1
-done
-
 # we need to work in a clean directory, the CWD is a git repo and can mess around with us!
 TMPDIR=$(mktemp -d)
 pushd $TMPDIR

@@ -1,2 +1,2 @@
-test: env -i PATH=$PATH TMT_TREE=$TMT_TREE TMT_PLAN_DATA=$TMT_PLAN_DATA ./test.sh
+summary: Test composes command
 tag: integration

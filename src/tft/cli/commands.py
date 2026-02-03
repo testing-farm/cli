@@ -903,7 +903,11 @@ def version():
 
 def check_token(api_url: str, api_token: Optional[str]):
     """Check for API token, falling back to keyring if not provided. Exits on failure."""
-    if not api_token:
+
+    running_in_container = os.path.exists(settings.CONTAINER_SIGN)
+
+    # Keyring is not supported inside container environment
+    if not api_token and not running_in_container:
         try:
             import keyring
 
@@ -911,15 +915,13 @@ def check_token(api_url: str, api_token: Optional[str]):
         except ImportError as e:
             console.print(f"⚠️  keyring import error: {e}", style="yellow")
         except Exception as e:
-            # inside container we do not support keyring, do not print an error
-            if not os.path.exists("/run/.containerenv"):
-                console.print(f"⚠️  keyring error: {e}", style="yellow")
+            console.print(f"⚠️  keyring error: {e}", style="yellow")
 
-        if not api_token:
-            exit_error(
-                f"No API token found, export `TESTING_FARM_API_TOKEN` environment variable "
-                f"or store it in keyring using `keyring set {api_url} api-token`."
-            )
+    if not api_token:
+        message = "No API token found, export `TESTING_FARM_API_TOKEN` environment variable."
+        if not running_in_container:
+            message += f" Or store it in keyring using `keyring set {api_url} api-token`."
+        exit_error(message)
 
     return api_token
 

@@ -22,6 +22,7 @@ from tft.cli.utils import (
     authorization_headers,
     check_unexpected_arguments,
     console,
+    console_stderr,
     exit_error,
     handle_response_errors,
     install_http_retries,
@@ -125,7 +126,7 @@ def composes(
     if api_token and not ranch:
         whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
         try:
-            with Progress(SpinnerColumn(), transient=True) as progress:
+            with Progress(SpinnerColumn(), transient=True, console=console_stderr) as progress:
                 progress.add_task(description="")
 
                 response = session.get(whoami_url, headers=authorization_headers(api_token))
@@ -140,7 +141,7 @@ def composes(
     search_pattern = re.compile(search) if search else None
 
     # Fetch composes
-    with Progress(SpinnerColumn(), transient=True) as progress:
+    with Progress(SpinnerColumn(), transient=True, console=console_stderr) as progress:
         progress.add_task(description="")
 
         composes_url = urllib.parse.urljoin(api_url, f"v0.2/composes/{ranch}")

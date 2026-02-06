@@ -33,6 +33,7 @@ from tft.cli.utils import (
     authorization_headers,
     check_unexpected_arguments,
     console,
+    console_stderr,
     exit_error,
     extract_uuid,
     handle_401_response,
@@ -731,7 +732,7 @@ def listing(
         extracted_ids = [extract_uuid(id_string) for id_string in ids]
 
         # Fetch individual requests
-        with Progress(SpinnerColumn(), transient=True) as progress:
+        with Progress(SpinnerColumn(), transient=True, console=console_stderr) as progress:
             progress.add_task(description="")
 
             def fetch_individual_request(request_id: str):
@@ -759,7 +760,7 @@ def listing(
                     requests_json.append(result)
     else:
         # Original logic for fetching by states and age
-        with Progress(SpinnerColumn(), transient=True) as progress:
+        with Progress(SpinnerColumn(), transient=True, console=console_stderr) as progress:
             progress.add_task(description="")
 
             # Lookup only current users requests

@@ -1778,9 +1778,7 @@ def run(
 
     # wait for the sanity test to finish
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True, console=console_stderr
     ) as progress:
         progress.add_task(description="Preparing execution environment", total=None)
 
@@ -2090,9 +2088,7 @@ def reserve(
 
     # wait for the reserve task to reserve the machine
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True, console=console_stderr
     ) as progress:
         task_id = None
 

@@ -17,7 +17,7 @@ packages = [
 testing-farm = "tft.cli.tool:app"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9.2,<4.0"
 # click 8.1.0 broke typer 0.4.0
 # https://github.com/tiangolo/typer/pull/375
 click = "^8.0.4"
@@ -33,6 +33,7 @@ shellingham = ">=1.3.0,<2.0.0"
 pendulum = "^3.0.0"
 python-dotenv = "^1.2.1"
 keyring = "^25.7.0"
+cryptography = "*"
 
 [tool.poetry.dev-dependencies]
 pyre-check = "^0.9.10"

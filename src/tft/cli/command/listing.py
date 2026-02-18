@@ -3,7 +3,6 @@
 
 import io
 import json
-import re
 import sys
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +23,7 @@ from tft.cli.commands import (
     ARGUMENT_INTERNAL_API_URL,
     PipelineState,
     check_token,
+    get_guest_address,
 )
 from tft.cli.config import settings
 from tft.cli.utils import (
@@ -148,8 +148,8 @@ def render_reservation_table(requests_json: Any, show_utc: bool) -> None:
     for column in ["state", "id", "ranch", "env", "user@ip", "started"]:
         table.add_column(column, justify="left" if column in ["env", "user@ip", "id"] else "center")
 
-    def extract_guest_ip(request):
-        """Extract guest IP from pipeline log."""
+    def list_guests(request):
+        """List guest SSH logins."""
         artifacts_url = get_artifacts_url(request)
         if artifacts_url == '<unavailable>':
             return request, "<not-yet-available>"
@@ -159,8 +159,10 @@ def render_reservation_table(requests_json: Any, show_utc: bool) -> None:
 
             session = requests.Session()
             pipeline_log = session.get(f"{artifacts_url}/pipeline.log").text
-            guests = re.findall(r'Guest is ready.*root@([\d\w\.-]+)', pipeline_log)
-            return request, f"root@{guests[0]}" if guests else "<not-yet-available>"
+            guests = get_guest_address(pipeline_log)
+            if guests:
+                return request, ", ".join(f"root@{guest}" for guest in guests)
+            return request, "<not-yet-available>"
         except:  # noqa: E722
             return request, "<not-yet-available>"
 
@@ -187,7 +189,7 @@ def render_reservation_table(requests_json: Any, show_utc: bool) -> None:
 
     # Extract IPs in parallel
     with ThreadPoolExecutor(max_workers=5) as executor:
-        ip_results = list(executor.map(extract_guest_ip, sorted_requests))
+        ip_results = list(executor.map(list_guests, sorted_requests))
 
     # Create IP lookup map
     ip_map = {req['id']: ip for req, ip in ip_results}

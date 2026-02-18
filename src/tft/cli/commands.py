@@ -83,6 +83,12 @@ SSH_RESERVATION_OPTIONS = (
 # Won't be validating CIDR and 65535 max port range with regex here, not worth it
 SECURITY_GROUP_RULE_FORMAT = re.compile(r"(tcp|ip|icmp|udp|-1|[0-255]):(.*):(\d{1,5}-\d{1,5}|\d{1,5}|-1)")
 
+# Regex patterns for extracting guest addresses from pipeline logs
+# single-host: "Guest is ready: ArtemisGuest(id, root@hostname, env)"
+SINGLEHOST_ADDRESS_PATTERN = re.compile(r'Guest is ready.*root@([\d\w\.-]+)')
+# multi-host: "[guestname]         primary address: hostname"
+MULTIHOST_ADDRESS_PATTERN = re.compile(r'\[\w+\]\s+primary address:\s+([\d\w\.-]+)')
+
 
 class WatchFormat(StrEnum):
     text = 'text'
@@ -406,6 +412,14 @@ def _sanity_reserve() -> None:
         exit_error("No SSH identities found in the SSH agent. Please run `ssh-add`.")
 
 
+def get_guest_address(pipeline_log: str) -> List[str]:
+    """
+    Extract guest hostnames/IPs from pipeline log.
+    """
+    matches = SINGLEHOST_ADDRESS_PATTERN.findall(pipeline_log) or MULTIHOST_ADDRESS_PATTERN.findall(pipeline_log)
+    return list(matches)
+
+
 def _handle_reservation(session, api_url: str, request_id: str, autoconnect: bool = False) -> None:
     """
     Handle the reservation for :py:func:``request`` and :py:func:``restart`` commands.
@@ -445,8 +459,8 @@ def _handle_reservation(session, api_url: str, request_id: str, autoconnect: boo
         )
         return
 
-    # match any hostname or IP address from gluetool modules log
-    guests = re.findall(r'Guest is ready.*root@([\d\w\.-]+)', pipeline_log)
+    # Extract guest hostnames/IPs from pipeline log (supports single-host and multihost)
+    guests = get_guest_address(pipeline_log)
 
     if not guests:
         exit_error(
@@ -459,6 +473,7 @@ def _handle_reservation(session, api_url: str, request_id: str, autoconnect: boo
         )
 
     if len(guests) > 1:
+        console.print("🌎 Multiple guests found, please connect to them manually:")
         for guest in guests:
             console.print(f"🌎 ssh root@{guest}")
         return
@@ -2071,7 +2086,7 @@ def reserve(
         console.print(id)
 
     # IP address or hostname of the guest, extracted from pipeline.log
-    guest: str = ""
+    guests: List[str] = []
 
     # wait for the reserve task to reserve the machine
     with Progress(
@@ -2176,19 +2191,34 @@ def reserve(
             elif 'Guest is being provisioned' in pipeline_log:
                 current_state = "provisioning resources"
 
-            # match any hostname or IP address from gluetool modules log
-            search = re.search(r'Guest is ready.*root@([\d\w\.-]+)', pipeline_log)
+            # Extract guest hostnames/IPs from pipeline log (supports single-host and multihost)
+            guests = get_guest_address(pipeline_log)
 
-            if search and 'execute task #1' in pipeline_log:
+            if guests and 'execute task #1' in pipeline_log:
                 current_state = "ready"
-                guest = search.group(1)
 
             time.sleep(settings.WATCH_TICK)
 
-    console.print(f"🌎 ssh root@{guest}")
+    if not guests:
+        exit_error(
+            textwrap.dedent(
+                f"""
+            No guests found to connect to. This is unexpected, please file an issue
+            to {settings.ISSUE_TRACKER}.
+        """
+            )
+        )
+
+    if len(guests) > 1:
+        console.print("🌎 Multiple guests found, please connect to them manually:")
+        for guest in guests:
+            console.print(f"🌎 ssh root@{guest}")
+        return
+    else:
+        console.print(f"🌎 ssh root@{guests[0]}")
 
     if autoconnect:
-        os.system(f"{SSH_RESERVATION_OPTIONS} root@{guest}")  # noqa: E501
+        os.system(f"{SSH_RESERVATION_OPTIONS} root@{guests[0]}")  # noqa: E501
 
 
 def update():

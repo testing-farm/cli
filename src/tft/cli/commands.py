@@ -317,6 +317,11 @@ OPTION_TAGS = typer.Option(
     metavar="key=value|@file",
     help="Tag cloud resources with given value. The @ prefix marks a yaml file to load.",
 )
+OPTION_SKIP_GUEST_SETUP: bool = typer.Option(
+    False,
+    "--skip-guest-setup",
+    help="Skip the guest setup phase (e.g. installing packages, running scripts).",
+)
 OPTION_RESERVE: bool = typer.Option(
     False,
     help="Reserve machine after testing, similarly to the `reserve` command.",
@@ -1019,6 +1024,7 @@ def request(
         None, help="URL of the icon of the user's webpage. It will be shown in the results viewer."
     ),
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
+    skip_guest_setup: bool = OPTION_SKIP_GUEST_SETUP,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
     tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
@@ -1276,6 +1282,14 @@ def request(
         rules = _parse_security_group_rules(security_group_rule_ingress or [], security_group_rule_egress or [])
         environments[0]["settings"]["provisioning"].update(rules)
 
+    if skip_guest_setup:
+        for environment in environments:
+            if "settings" not in environment:
+                environment["settings"] = {}
+            if "pipeline" not in environment["settings"]:
+                environment["settings"]["pipeline"] = {}
+            environment["settings"]["pipeline"]["skip_guest_setup"] = True
+
     # create final request
     request = TestingFarmRequestV1
     if test_type == "fmf":
@@ -1395,6 +1409,7 @@ def restart(
     dry_run: bool = OPTION_DRY_RUN,
     pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
+    skip_guest_setup: bool = OPTION_SKIP_GUEST_SETUP,
     reserve: bool = OPTION_RESERVE,
     ssh_public_keys: List[str] = _option_ssh_public_keys(REQUEST_PANEL_RESERVE),
     autoconnect: bool = _option_autoconnect(REQUEST_PANEL_RESERVE),
@@ -1610,6 +1625,14 @@ def restart(
                 environment["settings"]["provisioning"] = {}
 
             environment["settings"]["provisioning"]["tags"] = options_to_dict("tags", tags)
+
+    if skip_guest_setup:
+        for environment in request["environments"]:
+            if "settings" not in environment or not environment["settings"]:
+                environment["settings"] = {}
+            if "pipeline" not in environment["settings"]:
+                environment["settings"]["pipeline"] = {}
+            environment["settings"]["pipeline"]["skip_guest_setup"] = True
 
     if reserve:
         if not _contains_compose(request["environments"]):
@@ -1889,6 +1912,7 @@ def reserve(
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
     security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
+    skip_guest_setup: bool = OPTION_SKIP_GUEST_SETUP,
     skip_workstation_access: bool = typer.Option(
         False, help="Do not allow ingress traffic from this workstation's ip to the reserved machine"
     ),
@@ -1996,6 +2020,11 @@ def reserve(
             environment["tmt"] = {}
 
         environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
+
+    if skip_guest_setup:
+        if "pipeline" not in environment["settings"]:
+            environment["settings"]["pipeline"] = {}
+        environment["settings"]["pipeline"]["skip_guest_setup"] = True
 
     # Setting up retries
     session = requests.Session()

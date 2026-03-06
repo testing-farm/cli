@@ -95,6 +95,11 @@ testinfo "test post install script"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --post-install-script="some-script" | tee output
 tail -n+5 output | tr -d '\n' | jq -r .environments[].settings.provisioning.post_install_script | egrep '^some-script$'
 
+# skip-guest-setup
+testinfo "test skip-guest-setup"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --skip-guest-setup | tee output
+tail -n+5 output | tr -d '\n' | jq -r .environments[].settings.pipeline.skip_guest_setup | egrep '^true$'
+
 # test print-only-request-id
 testinfo "test post install script"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --print-only-request-id | tee output

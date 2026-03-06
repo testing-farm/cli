@@ -76,6 +76,11 @@ testinfo "test parallel-limit"
 testing-farm restart --parallel-limit 123 https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# skip-guest-setup, just test it is accepted
+testinfo "test skip-guest-setup"
+testing-farm restart --skip-guest-setup https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
 # tags, just test it is accepted
 testinfo "test tags"
 testing-farm restart --tag ArtemisUseSpot=false -t Business=TestingFarm https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output

@@ -288,6 +288,11 @@ testinfo "test parallel-limit"
 testing-farm request --parallel-limit 123 --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r '.settings.pipeline."parallel-limit"' | egrep '123'
 
+# skip-guest-setup
+testinfo "test skip-guest-setup"
+testing-farm request --skip-guest-setup --compose Fedora --dry-run | tee output
+tail -n+4 output | jq -r .environments[0].settings.pipeline.skip_guest_setup | egrep '^true$'
+
 # user webpage
 testinfo "test user webpage"
 testing-farm request --dry-run --compose Fedora --user-webpage "https://example.com" --user-webpage-icon "https://example.com/icon.png" --user-webpage-name "Example CI" | tee output

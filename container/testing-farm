@@ -2,6 +2,7 @@
 
 # default image to run
 IMAGE=${IMAGE:-quay.io/testing-farm/cli:latest}
+WRAPPER_URL="https://gitlab.com/testing-farm/cli/-/raw/main/container/testing-farm"
 
 # set no colors if NO_COLOR variable set
 if [ -n "$NO_COLOR" ]; then
@@ -23,7 +24,10 @@ fi
 
 # testing-farm image and wrapper update
 if [ "$1" == "update" ]; then
-    curl -Lo $(readlink -f $0) https://gitlab.com/testing-farm/cli/-/raw/main/container/testing-farm
+    if ! curl --fail --retry 5 --retry-all-errors -Lo $(readlink -f $0) "${WRAPPER_URL}"; then
+        echo "⛔ Could not update wrapper script from ${WRAPPER_URL}."
+        exit 255
+    fi
     $CONTAINER_RUNTIME pull $IMAGE
     exit 0
 fi

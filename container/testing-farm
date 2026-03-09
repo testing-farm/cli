@@ -24,7 +24,7 @@ fi
 
 # testing-farm image and wrapper update
 if [ "$1" == "update" ]; then
-    if ! curl --fail --retry 5 --retry-all-errors -Lo $(readlink -f $0) "${WRAPPER_URL}"; then
+    if ! curl --fail --retry 5 --retry-delay 2 --retry-max-time 30 -Lo $(readlink -f $0) "${WRAPPER_URL}"; then
         echo "⛔ Could not update wrapper script from ${WRAPPER_URL}."
         exit 255
     fi

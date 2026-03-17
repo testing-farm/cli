@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites overall-result="passed">
+ <properties>
+  <property name="baseosci.overall-result" value="passed"/>
+ </properties>
+ <testsuite name="/testing-farm/multihost/basic" result="passed" tests="5" stage="complete">
+  <logs>
+   <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/data" name="data"/>
+   <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/tmt-run.log" name="tmt-log"/>
+   <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/tmt-reproducer.sh" name="tmt-reproducer"/>
+   <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/log.txt" name="tmt-verbose-log"/>
+   <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t" name="workdir"/>
+  </logs>
+  <properties>
+   <property name="baseosci.result" value="passed"/>
+   <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic"/>
+  </properties>
+  <testcase name="/server-setup/testing-farm/tests/multihost/A" result="passed" time="0" start-time="2026-03-17T10:15:10.337157+00:00" end-time="2026-03-17T10:15:10.404079+00:00" serial-number="1">
+   <properties>
+    <property name="contact" value="Testing Farm Contact &lt;tft@redhat.com&gt;"/>
+    <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic_1_server"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/tests" ref="main" name="/server-setup/testing-farm/tests/multihost/A"/>
+   <logs>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/data" name="data" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/failures.yaml" name="failures.yaml" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1" name="log_dir" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/output.txt" name="testout.log" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+   </logs>
+   <guest name="server">
+    <testing-environment name="provisioned">
+     <property name="arch" value="x86_64"/>
+     <property name="compose" value="Fedora-Rawhide"/>
+     <property name="snapshots" value="False"/>
+    </testing-environment>
+   </guest>
+  </testcase>
+  <testcase name="/tests/testing-farm/tests/multihost/B" result="passed" time="0" start-time="2026-03-17T10:15:11.284616+00:00" end-time="2026-03-17T10:15:11.352111+00:00" serial-number="2">
+   <properties>
+    <property name="contact" value="Testing Farm Contact1 &lt;tft@redhat.com&gt;"/>
+    <property name="contact" value="Testing Farm Contact2 &lt;tft@redhat.com&gt;"/>
+    <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic_2_server"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/tests" ref="main" name="/tests/testing-farm/tests/multihost/B"/>
+   <logs>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/data" name="data" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/failures.yaml" name="failures.yaml" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2" name="log_dir" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/output.txt" name="testout.log" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+   </logs>
+   <guest name="server">
+    <testing-environment name="provisioned">
+     <property name="arch" value="x86_64"/>
+     <property name="compose" value="Fedora-Rawhide"/>
+     <property name="snapshots" value="False"/>
+    </testing-environment>
+   </guest>
+  </testcase>
+  <testcase name="/tests/testing-farm/tests/multihost/B" result="passed" time="0" start-time="2026-03-17T10:15:11.278429+00:00" end-time="2026-03-17T10:15:11.346368+00:00" serial-number="2">
+   <properties>
+    <property name="contact" value="Testing Farm Contact1 &lt;tft@redhat.com&gt;"/>
+    <property name="contact" value="Testing Farm Contact2 &lt;tft@redhat.com&gt;"/>
+    <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic_2_client"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/tests" ref="main" name="/tests/testing-farm/tests/multihost/B"/>
+   <logs>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/data" name="data" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/failures.yaml" name="failures.yaml" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2" name="log_dir" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/output.txt" name="testout.log" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+   </logs>
+   <guest name="client">
+    <testing-environment name="provisioned">
+     <property name="arch" value="x86_64"/>
+     <property name="compose" value="Fedora-Rawhide"/>
+     <property name="snapshots" value="False"/>
+    </testing-environment>
+   </guest>
+  </testcase>
+  <testcase name="/tests/testing-farm/tests/multihost/C" result="passed" time="0" start-time="2026-03-17T10:15:12.073326+00:00" end-time="2026-03-17T10:15:12.140738+00:00" serial-number="3">
+   <properties>
+    <property name="contact" value="Testing Farm Contact1 &lt;tft@redhat.com&gt;"/>
+    <property name="contact" value="Testing Farm Contact2 &lt;tft@redhat.com&gt;"/>
+    <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic_3_server"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/tests" ref="main" name="/tests/testing-farm/tests/multihost/C"/>
+   <logs>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/data" name="data" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/failures.yaml" name="failures.yaml" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3" name="log_dir" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/output.txt" name="testout.log" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+   </logs>
+   <guest name="server">
+    <testing-environment name="provisioned">
+     <property name="arch" value="x86_64"/>
+     <property name="compose" value="Fedora-Rawhide"/>
+     <property name="snapshots" value="False"/>
+    </testing-environment>
+   </guest>
+  </testcase>
+  <testcase name="/tests/testing-farm/tests/multihost/C" result="passed" time="0" start-time="2026-03-17T10:15:12.061676+00:00" end-time="2026-03-17T10:15:12.129051+00:00" serial-number="3">
+   <properties>
+    <property name="contact" value="Testing Farm Contact1 &lt;tft@redhat.com&gt;"/>
+    <property name="contact" value="Testing Farm Contact2 &lt;tft@redhat.com&gt;"/>
+    <property name="id" value="work-basics92qzj2t_testing-farm-multihost-basic_3_client"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/tests" ref="main" name="/tests/testing-farm/tests/multihost/C"/>
+   <logs>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/data" name="data" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/failures.yaml" name="failures.yaml" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3" name="log_dir" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+    <log href="https://artifacts.dev.testing-farm.io/279566d1-8c0d-441e-9109-d003e2641c01/work-basics92qzj2t/testing-farm/multihost/basic/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/output.txt" name="testout.log" schedule-entry="Fedora-Rawhide:x86_64:/testing-farm/multihost/basic" schedule-stage="running"/>
+   </logs>
+   <guest name="client">
+    <testing-environment name="provisioned">
+     <property name="arch" value="x86_64"/>
+     <property name="compose" value="Fedora-Rawhide"/>
+     <property name="snapshots" value="False"/>
+    </testing-environment>
+   </guest>
+  </testcase>
+  <guest name="server">
+   <testing-environment name="provisioned">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="Fedora-Rawhide"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+  </guest>
+  <guest name="client">
+   <testing-environment name="provisioned">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="Fedora-Rawhide"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+  </guest>
+ </testsuite>
+</testsuites>

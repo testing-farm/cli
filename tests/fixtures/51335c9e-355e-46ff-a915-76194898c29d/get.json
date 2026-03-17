@@ -1,0 +1,8 @@
+{
+    "id": "51335c9e-355e-46ff-a915-76194898c29d",
+    "state": "complete",
+    "run": {"artifacts": "artifacts-url-placeholder"},
+    "result": {"overall": "passed", "xunit": null},
+    "environments_requested": [{"arch": "x86_64"}],
+    "settings": {"pipeline": {"type": "tmt-multihost"}}
+}

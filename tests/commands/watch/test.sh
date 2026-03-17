@@ -52,9 +52,15 @@ egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-4
 
 # multihost test
 testinfo "multihost test"
-testing-farm watch --id 51335c9e-355e-46ff-a915-76194898c29d | tee output
-egrep "^🔎 api https://api.dev.testing-farm.io/v0.1/requests/51335c9e-355e-46ff-a915-76194898c29d$" output
-egrep "^🚢 artifacts https://artifacts.dev.testing-farm.io/51335c9e-355e-46ff-a915-76194898c29d$" output
+# start mock server on port 10003
+python $FIXTURES_DIR/mock_server.py 10003 &
+MOCK_PID=$!
+trap "kill $MOCK_PID 2>/dev/null || true" EXIT
+sleep 1
+
+TESTING_FARM_API_URL=http://localhost:10003 testing-farm watch --id 51335c9e-355e-46ff-a915-76194898c29d | tee output
+egrep "^🔎 api http://localhost:10003/v0.1/requests/51335c9e-355e-46ff-a915-76194898c29d$" output
+egrep "^🚢 artifacts http://localhost:10003/artifacts/51335c9e-355e-46ff-a915-76194898c29d$" output
 egrep "^✅ tests passed$" output
 egrep "^│ /testing-farm/multihost/basic │ pass   │$" output
 

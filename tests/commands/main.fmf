@@ -1,1 +1,1 @@
-test: env -i PATH=$PATH ./test.sh
+test: env -i PATH=$PATH FIXTURES_DIR=$TMT_TREE/tests/fixtures/ ./test.sh

@@ -29,56 +29,51 @@ grep -E "^⛔ API token is invalid" output
 # test --all flag without token
 unset TESTING_FARM_API_TOKEN
 testinfo "list all requests without token"
-testing-farm list --all --age 1h --format text
+testing-farm list --all --age 5m --format text
 
 # test various output formats
 testinfo "test json output format"
-testing-farm list --all --age 1h --format json
+testing-farm list --all --age 5m --format json
 
 testinfo "test yaml output format"
-testing-farm list --all --age 1h --format yaml
+testing-farm list --all --age 5m --format yaml
 
 testinfo "test table output format"
-testing-farm list --all --age 1h --format table
+testing-farm list --all --age 5m --format table
 
 testinfo "test text output format"
-testing-farm list --all --age 1h --format text
+testing-farm list --all --age 5m --format text
 
 # test state filtering
 testinfo "test state filtering"
-testing-farm list --all --age 1h --state complete --format text
-
-# test age filtering
-testinfo "test age filtering"
-testing-farm list --all --age 30m --format text
-testing-farm list --all --age 1h --format text
+testing-farm list --all --age 5m --state complete --format text
 
 # test minimum age
 testinfo "test minimum age filtering"
-testing-farm list --all --age 1h --min-age 30m --format text
+testing-farm list --all --age 35m --min-age 30m --format text
 
 # test brief output
 testinfo "test brief output"
-testing-farm list --all --age 1h --brief --format text
+testing-farm list --all --age 5m --brief --format text
 
 # test showing secrets (can only be used with --id)
 testinfo "test show secrets restriction"
-testing-farm list --all --age 1h --show-secrets 2>&1 | tee output
+testing-farm list --all --age 5m --show-secrets 2>&1 | tee output
 grep -E "^⛔.*--show-secrets.*--id" output
 
 # test show user flag
 testinfo "test show user flag"
-testing-farm list --all --age 1h --show-token-id --format text
+testing-farm list --all --age 5m --show-token-id --format text
 
 # test time display options
 testinfo "test time display options"
-testing-farm list --all --age 1h --show-time --format text
-testing-farm list --all --age 1h --show-utc --format text
+testing-farm list --all --age 5m --show-time --format text
+testing-farm list --all --age 5m --show-utc --format text
 
 # test ranch filtering
 testinfo "test ranch filtering"
-testing-farm list --all --age 1h --ranch public --format text
-testing-farm list --all --age 1h --ranch redhat --format text
+testing-farm list --all --age 5m --ranch public --format text
+testing-farm list --all --age 5m --ranch redhat --format text
 
 # test request ID filtering (requires token for some functionality)
 testinfo "test request ID filtering without token"
@@ -102,7 +97,7 @@ grep -E "(No API token|--show-secrets.*--id)" output || true
 
 # test reservations option
 testinfo "test reserve flag"
-testing-farm list --all --age 1h --reservations
+testing-farm list --all --age 5m --reservations
 
 # test conflicting options
 testinfo "test conflicting options with --id"
@@ -113,7 +108,7 @@ grep -E "conflicts with.*--mine" output
 testing-farm list --id 12345678-1234-1234-1234-123456789abc --all 2>&1 | tee output
 grep -E "conflicts with.*--all" output
 
-testing-farm list --id 12345678-1234-1234-1234-123456789abc --age 1h 2>&1 | tee output
+testing-farm list --id 12345678-1234-1234-1234-123456789abc --age 5m 2>&1 | tee output
 grep -E "conflicts with.*--age" output
 
 testing-farm list --id 12345678-1234-1234-1234-123456789abc --min-age 1h 2>&1 | tee output
@@ -130,7 +125,7 @@ set -e
 # test reservations conflicts with explicit format
 testinfo "test reservations conflicts with --format"
 set +e
-testing-farm list --all --age 1h -r --format json 2>&1 | tee output
+testing-farm list --all --age 5m -r --format json 2>&1 | tee output
 grep -E "--reservations.*conflicts with.*--format" output
 set -e
 
@@ -141,21 +136,21 @@ testing-farm list --all --age invalid 2>&1 | tee output
 grep -E "(Age must end with|Invalid age)" output
 
 testinfo "test invalid state"
-testing-farm list --all --age 1h --state invalid 2>&1 | tee output
+testing-farm list --all --age 5m --state invalid 2>&1 | tee output
 grep -E "Invalid value.*state" output
 
 testinfo "test invalid format"
-testing-farm list --all --age 1h --format invalid 2>&1 | tee output
+testing-farm list --all --age 5m --format invalid 2>&1 | tee output
 grep -E "Invalid value.*format" output
 
 testinfo "test invalid ranch"
-testing-farm list --all --age 1h --ranch invalid 2>&1 | tee output
+testing-farm list --all --age 5m --ranch invalid 2>&1 | tee output
 grep -E "Invalid value.*ranch" output
 set -e
 
 # test exit codes
 testinfo "test exit code on success"
-testing-farm list --all --age 1h --format text
+testing-farm list --all --age 5m --format text
 
 # remove temporary directory
 rm -rf $TMPDIR

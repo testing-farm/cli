@@ -980,7 +980,8 @@ def request(
         None, help="URL of the GIT repository to test. If not set, autodetected from current git repository."
     ),
     git_ref: str = typer.Option(
-        "main", help="GIT ref or branch to test. If not set, autodetected from current git repository."
+        "main",
+        help="GIT ref or branch to test. If not set, autodetected from current git repository or defaults to 'main' when --git-url is provided.",  # noqa
     ),
     git_merge_sha: Optional[str] = typer.Option(
         None, help="GIT ref or branch into which --ref will be merged, if specified."
@@ -1100,12 +1101,13 @@ def request(
         assert git_url
         git_url = re.sub(r"^(?:(?:git\+)?ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
 
-        # detect git ref
-        git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")
+        # detect git ref if not explicitly provided
+        if context.get_parameter_source("git_ref") != ParameterSource.COMMANDLINE:
+            git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")
 
-        # in case we have a commit checked out, not a named branch
-        if git_ref == "HEAD":
-            git_ref = cmd_output_or_exit("git rev-parse HEAD", "could not autodetect git ref")
+            # in case we have a commit checked out, not a named branch
+            if git_ref == "HEAD":
+                git_ref = cmd_output_or_exit("git rev-parse HEAD", "could not autodetect git ref")
 
         # detect test type from local files
         if os.path.exists(os.path.join((tmt_path or ""), ".fmf/version")):

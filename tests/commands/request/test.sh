@@ -49,6 +49,12 @@ egrep "📦 repository https://gitlab.com/testing-farm/cli ref main" output
 egrep "💻 container image in plan on x86_64" output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# test --git-ref without --git-url is honored
+testinfo "git-ref without git-url is honored"
+testing-farm request --git-ref custom-ref --dry-run | tee output
+egrep "📦 repository https://gitlab.com/testing-farm/cli ref custom-ref" output
+tail -n+4 output | jq -r .test.fmf.ref | egrep '^custom-ref$'
+
 # test x86_64 only without compose
 testinfo "x86_64 only without compose"
 testing-farm request --arch aarch64,s390x | tee output

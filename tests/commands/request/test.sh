@@ -293,6 +293,26 @@ testinfo "test skip-guest-setup"
 testing-farm request --skip-guest-setup --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .environments[0].settings.pipeline.skip_guest_setup | egrep '^true$'
 
+# worker-image option
+testinfo "worker-image option"
+testing-farm request --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest | tee output
+egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
+tail -n+5 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
+
+# worker-config-image option
+testinfo "worker-config-image option"
+testing-farm request --dry-run --compose Fedora --worker-config-image quay.io/testing-farm/ranch-public:latest | tee output
+egrep "👷 Forcing worker config image quay.io/testing-farm/ranch-public:latest" output
+tail -n+5 output | tr -d '\n' | jq -r '.settings.worker."config-image"' | egrep '^quay.io/testing-farm/ranch-public:latest$'
+
+# combined worker-image and worker-config-image options
+testinfo "combined worker-image and worker-config-image options"
+testing-farm request --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest --worker-config-image quay.io/testing-farm/ranch-public:latest | tee output
+egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
+egrep "👷 Forcing worker config image quay.io/testing-farm/ranch-public:latest" output
+tail -n+6 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
+tail -n+6 output | tr -d '\n' | jq -r '.settings.worker."config-image"' | egrep '^quay.io/testing-farm/ranch-public:latest$'
+
 # user webpage
 testinfo "test user webpage"
 testing-farm request --dry-run --compose Fedora --user-webpage "https://example.com" --user-webpage-icon "https://example.com/icon.png" --user-webpage-name "Example CI" | tee output

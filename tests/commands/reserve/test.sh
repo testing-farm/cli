@@ -118,6 +118,20 @@ testing-farm reserve --dry-run --compose Fedora --worker-image quay.io/testing-f
 egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
 tail -n+6 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
 
+# worker-config-image option
+testinfo "worker-config-image option"
+testing-farm reserve --dry-run --compose Fedora --worker-config-image quay.io/testing-farm/ranch-public:latest | tee output
+egrep "👷 Forcing worker config image quay.io/testing-farm/ranch-public:latest" output
+tail -n+6 output | tr -d '\n' | jq -r '.settings.worker."config-image"' | egrep '^quay.io/testing-farm/ranch-public:latest$'
+
+# combined worker-image and worker-config-image options
+testinfo "combined worker-image and worker-config-image options"
+testing-farm reserve --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest --worker-config-image quay.io/testing-farm/ranch-public:latest | tee output
+egrep "👷 Forcing worker image quay.io/testing-farm/worker:latest" output
+egrep "👷 Forcing worker config image quay.io/testing-farm/ranch-public:latest" output
+tail -n+7 output | tr -d '\n' | jq -r '.settings.worker.image' | egrep '^quay.io/testing-farm/worker:latest$'
+tail -n+7 output | tr -d '\n' | jq -r '.settings.worker."config-image"' | egrep '^quay.io/testing-farm/ranch-public:latest$'
+
 # tags, just test it is accepted
 testinfo "test tags"
 testing-farm reserve --dry-run --tag ArtemisUseSpot=false -t Business=TestingFarm 2>&1 | tee output

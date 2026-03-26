@@ -53,6 +53,16 @@ testinfo "worker-image option accepted"
 testing-farm restart --worker-image quay.io/testing-farm/worker:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
+# worker-config-image option, just test it is accepted
+testinfo "worker-config-image option accepted"
+testing-farm restart --worker-config-image quay.io/testing-farm/ranch-public:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
+# combined worker-image and worker-config-image options, just test they are accepted
+testinfo "combined worker-image and worker-config-image options accepted"
+testing-farm restart --worker-image quay.io/testing-farm/worker:latest --worker-config-image quay.io/testing-farm/ranch-public:latest https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output
+egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
+
 # worker-image option, just test it is accepted
 testinfo "hardware option accepted"
 testing-farm restart --hardware boot.mode=uefi https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output

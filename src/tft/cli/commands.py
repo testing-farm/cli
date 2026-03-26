@@ -302,6 +302,11 @@ OPTION_HARDWARE: List[str] = typer.Option(
 OPTION_WORKER_IMAGE: Optional[str] = typer.Option(
     None, "--worker-image", help="Force worker container image. Requires Testing Farm developer permissions."
 )
+OPTION_WORKER_CONFIG_IMAGE: Optional[str] = typer.Option(
+    None,
+    "--worker-config-image",
+    help="Force worker config container image. Requires Testing Farm developer permissions.",
+)
 OPTION_PARALLEL_LIMIT: Optional[int] = typer.Option(
     None,
     '--parallel-limit',
@@ -994,6 +999,7 @@ def request(
     tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
+    worker_config_image: Optional[str] = OPTION_WORKER_CONFIG_IMAGE,
     redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
     fedora_koji_build: List[str] = OPTION_FEDORA_KOJI_BUILD,
     fedora_copr_build: List[str] = OPTION_FEDORA_COPR_BUILD,
@@ -1332,6 +1338,12 @@ def request(
         console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
         request["settings"]["worker"] = {"image": worker_image}
 
+    # worker config image
+    if worker_config_image:
+        console.print(f"👷 Forcing worker config image [blue]{worker_config_image}[/blue]")
+        request["settings"]["worker"] = request["settings"].get("worker", {})
+        request["settings"]["worker"]["config-image"] = worker_config_image
+
     if not user_webpage and (user_webpage_name or user_webpage_icon):
         exit_error("The user-webpage-name and user-webpage-icon can be used only with user-webpage option")
 
@@ -1405,6 +1417,7 @@ def restart(
     tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
     tmt_finish: Optional[List[str]] = _generate_tmt_extra_args("finish"),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
+    worker_config_image: Optional[str] = OPTION_WORKER_CONFIG_IMAGE,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     dry_run: bool = OPTION_DRY_RUN,
     pipeline_type: Optional[PipelineType] = OPTION_PIPELINE_TYPE,
@@ -1601,6 +1614,15 @@ def restart(
         console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
         request["settings"] = request["settings"] if request.get("settings") else {}
         request["settings"]["worker"] = {"image": worker_image}
+        # it is required to have also pipeline key set, otherwise API will fail
+        request["settings"]["pipeline"] = request["settings"].get("pipeline", {})
+
+    # worker config image
+    if worker_config_image:
+        console.print(f"👷 Forcing worker config image [blue]{worker_config_image}[/blue]")
+        request["settings"] = request["settings"] if request.get("settings") else {}
+        request["settings"]["worker"] = request["settings"].get("worker", {})
+        request["settings"]["worker"]["config-image"] = worker_config_image
         # it is required to have also pipeline key set, otherwise API will fail
         request["settings"]["pipeline"] = request["settings"].get("pipeline", {})
 
@@ -1910,6 +1932,7 @@ def reserve(
     ),
     autoconnect: bool = _option_autoconnect(RESERVE_PANEL_GENERAL),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
+    worker_config_image: Optional[str] = OPTION_WORKER_CONFIG_IMAGE,
     security_group_rule_ingress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_INGRESS,
     security_group_rule_egress: Optional[List[str]] = OPTION_SECURITY_GROUP_RULE_EGRESS,
     skip_guest_setup: bool = OPTION_SKIP_GUEST_SETUP,
@@ -2067,6 +2090,13 @@ def reserve(
         console.print(f"👷 Forcing worker image [blue]{worker_image}[/blue]")
         request["settings"] = request["settings"] if request.get("settings") else {}
         request["settings"]["worker"] = {"image": worker_image}
+
+    # worker config image
+    if worker_config_image:
+        console.print(f"👷 Forcing worker config image [blue]{worker_config_image}[/blue]")
+        request["settings"] = request["settings"] if request.get("settings") else {}
+        request["settings"]["worker"] = request["settings"].get("worker", {})
+        request["settings"]["worker"]["config-image"] = worker_config_image
 
     request["environments"] = [environment]
 

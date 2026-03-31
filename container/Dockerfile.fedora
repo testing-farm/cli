@@ -7,7 +7,7 @@ ENV HOME=/root
 # bash            - required to run tmt tests against the container
 # git             - required for auto-detection
 # openssh-client  - required for reserve command
-RUN dnf -y install bash git make python3.10 openssh-clients && dnf -y clean all
+RUN dnf -y install bash git make python3.12 openssh-clients && dnf -y clean all
 
 # This file is used to detect if CLI is running inside this container image
 RUN touch /.testing-farm-container
@@ -21,7 +21,7 @@ RUN    mkdir -p $HOME/.ssh \
 
 COPY dist/tft_cli*.whl .
 
-RUN python3.10 -m ensurepip && pip3.10 install tft_cli*.whl && rm -f tft_cli*.whl
+RUN python3.12 -m ensurepip && pip3.12 install tft_cli*.whl && rm -f tft_cli*.whl
 
 WORKDIR /code
 

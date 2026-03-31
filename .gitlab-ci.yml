@@ -4,7 +4,7 @@ stages:
   - 🔎 test
   - 🚀 deploy
 
-image: quay.io/testing-farm/python-ci-image:2023-05-23-73a71064
+image: quay.io/testing-farm/python-ci-image:latest
 
 variables:
   IMAGE: quay.io/testing-farm/cli

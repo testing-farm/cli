@@ -115,6 +115,9 @@ publish/container/version:
   stage: 🚀 deploy
   before_script:
     - wget -qO- https://install.python-poetry.org | python3 - --version 1.4.2
+    # Workaround: Poetry 1.4.2 `self add` needs distutils, removed in Python 3.12.
+    # Can be removed once Poetry is upgraded to 1.7+.
+    - /root/.local/share/pypoetry/venv/bin/pip install setuptools
     - /root/.local/bin/poetry self add poetry-dynamic-versioning
     - export IMAGE_TAG="v$(/root/.local/bin/poetry version -s | tr '+' '.')-$CI_COMMIT_SHORT_SHA"
 
@@ -123,6 +126,9 @@ publish/container/tag:
   stage: 🚀 deploy
   before_script:
     - wget -qO- https://install.python-poetry.org | python3 - --version 1.4.2
+    # Workaround: Poetry 1.4.2 `self add` needs distutils, removed in Python 3.12.
+    # Can be removed once Poetry is upgraded to 1.7+.
+    - /root/.local/share/pypoetry/venv/bin/pip install setuptools
     - /root/.local/bin/poetry self add poetry-dynamic-versioning
     - export IMAGE_TAG="v$(/root/.local/bin/poetry version -s)"
 

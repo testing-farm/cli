@@ -1,0 +1,19 @@
+{
+    "id": "2db3190a-f608-4f69-adf8-2129c1d0d03b",
+    "environments_requested": [
+        {
+            "os": {"compose": "Fedora-39"},
+            "secrets": {"foo-secret": "hidden"},
+            "settings": {
+                "provisioning": {
+                    "security_group_rules_ingress": {"port_min": "hidden"}
+                }
+            },
+            "tmt": {
+                "environment": {"TMT_REBOOT_TIMEOUT": "hidden"}
+            }
+        }
+    ],
+    "test": {"fmf": {"url": "https://example.com", "ref": "main"}},
+    "settings": {}
+}

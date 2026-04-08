@@ -39,6 +39,15 @@ class MockHandler(http.server.BaseHTTPRequestHandler):
         prefix = '/v0.1/requests/'
         if self.path.startswith(prefix):
             request_id = self.path[len(prefix) :]
+
+            # If a 403.json marker exists and the request has an Authorization
+            # header, return 403 to simulate a non-owner access.
+            marker_403 = os.path.join(fixtures_dir, request_id, '403.json')
+            if os.path.isfile(marker_403) and self.headers.get('Authorization'):
+                self.send_response(403)
+                self.end_headers()
+                return
+
             json_path = os.path.join(fixtures_dir, request_id, 'get.json')
             if os.path.isfile(json_path):
                 with open(json_path, 'r') as f:

@@ -1482,6 +1482,9 @@ def restart(
     if response.status_code == 401:
         handle_401_response(response)
 
+    # We need this flag to decide if we want to remove secrets or not now, and do changes later
+    remove_secrets = False
+
     # The API token is valid, but it doesn't own the request
     if response.status_code == 403:
         console.print(
@@ -1493,6 +1496,9 @@ def restart(
 
         # Get the request details
         response = session.get(get_url)
+
+        # Flag that we need to remove secrets from the request later
+        remove_secrets = True
 
     if response.status_code != 200:
         exit_error(f"Unexpected error. Please file an issue to {settings.ISSUE_TRACKER}.")
@@ -1516,6 +1522,18 @@ def restart(
                 del test[key][subkey]
         if not test[key]:
             del test[key]
+
+    # Remove secrets if flagged
+    if remove_secrets:
+        for env in request['environments']:
+            if env.get('secrets'):
+                del env['secrets']
+
+            if ((env.get('settings') or {}).get('provisioning') or {}).get('security_group_rules_ingress'):
+                del env['settings']['provisioning']['security_group_rules_ingress']
+
+            if (env.get('tmt') or {}).get('environment'):
+                del env['tmt']['environment']
 
     # add test type
     test = request['test'][list(request['test'].keys())[0]]

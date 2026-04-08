@@ -229,6 +229,26 @@ echo "✅ Source/target URL separation configuration accepted"
 kill $MOCK_PID 2>/dev/null || true
 rm -f /tmp/mock_8001_requests.log /tmp/mock_8002_requests.log
 
+# Test: secrets are removed from non-owned request on restart
+testinfo "Testing secrets removal for non-owned request on restart"
+
+python3 $FIXTURES_DIR/mock_server.py 8003 &
+MOCK_PID_SECRETS=$!
+sleep 2
+
+TESTING_FARM_API_URL=http://localhost:8003 \
+TESTING_FARM_INTERNAL_API_URL=http://localhost:8003 \
+TESTING_FARM_API_TOKEN=some-token \
+testing-farm restart --dry-run 2db3190a-f608-4f69-adf8-2129c1d0d03b 2>&1 | tee output
+
+# Verify hidden secrets are not in the dry-run output
+grep -qv 'foo-secret' output
+grep -qv 'TMT_REBOOT_TIMEOUT' output
+grep -qv 'port_min' output
+echo "✅ Secrets correctly removed from non-owned request on restart"
+
+kill $MOCK_PID_SECRETS 2>/dev/null || true
+
 # test --test option with --reserve extends test filter
 testinfo "test --test option with --reserve extends test filter"
 testing-farm restart --dry-run --reserve --test "my-test" https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output

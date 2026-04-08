@@ -130,12 +130,23 @@ def artifacts(type: str, artifacts_raw: List[str]) -> List[Dict[str, str]]:
     artifacts = []
 
     for artifact in artifacts_raw:
+        install = None
+
+        # Check for ::key=value shorthand suffix
+        if '::' in artifact:
+            artifact, _, flags = artifact.partition('::')
+            flags_dict = dict(flag.split('=', 1) for flag in flags.split(','))
+            if 'install' in flags_dict:
+                install = normalize_bool_option(flags_dict['install'])
+
         if '=' in artifact:
             artifact_dict = options_to_dict('artifact `{}`'.format(artifact), normalize_multistring_option([artifact]))
         else:
             artifact_dict = {'id': artifact}
 
-        if 'install' in artifact_dict:
+        if install is not None:
+            artifact_dict['install'] = install
+        elif 'install' in artifact_dict:
             artifact_dict['install'] = normalize_bool_option(artifact_dict['install'])  # pyre-ignore[6]
 
         artifacts.append({'type': type, **artifact_dict})

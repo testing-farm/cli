@@ -246,30 +246,39 @@ OPTION_POOL: Optional[str] = typer.Option(
 )
 OPTION_REDHAT_BREW_BUILD: List[str] = typer.Option(
     None,
-    help="Brew build task IDs or build NVRs to install on the test environment.",
+    help=(
+        "Brew build task IDs or build NVRs to install on the test environment."
+        " Append `::install=false` to skip installation."
+    ),
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_FEDORA_KOJI_BUILD: List[str] = typer.Option(
     None,
-    help="Koji build task IDs or build NVRs to install on the test environment.",
+    help=(
+        "Koji build task IDs or build NVRs to install on the test environment."
+        " Append `::install=false` to skip installation."
+    ),
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_FEDORA_COPR_BUILD: List[str] = typer.Option(
     None,
     help=(
         "Fedora Copr build to install on the test environment, specified using `build-id:chroot-name`"
-        ", e.g. 1784470:fedora-32-x86_64."
+        ", e.g. 1784470:fedora-32-x86_64. Append `::install=false` to skip installation."
     ),
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_REPOSITORY: List[str] = typer.Option(
     None,
-    help="Repository base url to add to the test environment and install all packages from it.",
+    help=(
+        "Repository base url to add to the test environment and install all packages from it."
+        " Append `::install=false` to skip installation."
+    ),
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_REPOSITORY_FILE: List[str] = typer.Option(
     None,
-    help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo",  # noqa
+    help="URL to a repository file which should be added to /etc/yum.repos.d, e.g. https://example.com/repository.repo. Append `::install=false` to skip installation.",  # noqa
     rich_help_panel=RESERVE_PANEL_ENVIRONMENT,
 )
 OPTION_DRY_RUN: bool = typer.Option(

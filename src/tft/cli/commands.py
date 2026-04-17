@@ -654,6 +654,7 @@ def _parse_xunit(xunit: str, multihost: bool = False):
     passed_plans = {}
     skipped_plans = {}
     errored_plans = {}
+    incompleted_plans = {}
 
     results_root = ET.fromstring(xunit)
     for plan in results_root.findall('./testsuite'):
@@ -682,13 +683,15 @@ def _parse_xunit(xunit: str, multihost: bool = False):
             _add_plan(failed_plans, arch, plan)
         elif plan.get('result') == 'skipped':
             _add_plan(skipped_plans, arch, plan)
-        else:
+        elif plan.get('result') == 'error':
             _add_plan(errored_plans, arch, plan)
+        else:
+            _add_plan(incompleted_plans, arch, plan)
 
-    # Let's remove possible duplicates among N/A errored out tests
-    if 'N/A' in errored_plans:
-        errored_plans['N/A'] = list(set(errored_plans['N/A']))
-    return passed_plans, failed_plans, skipped_plans, errored_plans
+    # Let's remove possible duplicates among N/A in incomplete plans
+    if 'N/A' in incompleted_plans:
+        incompleted_plans['N/A'] = list(set(incompleted_plans['N/A']))
+    return passed_plans, failed_plans, skipped_plans, errored_plans, incompleted_plans
 
 
 def _get_request_summary(request: dict, session: requests.Session):
@@ -707,7 +710,9 @@ def _get_request_summary(request: dict, session: requests.Session):
                 xunit = response.text
         except requests.exceptions.ConnectionError:
             console_stderr.print("Could not get xunit results")
-    passed_plans, failed_plans, skipped_plans, errored_plans = _parse_xunit(xunit, multihost=multihost)
+    passed_plans, failed_plans, skipped_plans, errored_plans, incompleted_plans = _parse_xunit(
+        xunit, multihost=multihost
+    )
     overall = (request.get("result") or {}).get("overall")
     arches_requested = [env['arch'] for env in request['environments_requested']]
 
@@ -721,6 +726,7 @@ def _get_request_summary(request: dict, session: requests.Session):
         'failed_plans': failed_plans,
         'skipped_plans': skipped_plans,
         'passed_plans': passed_plans,
+        'incompleted_plans': incompleted_plans,
     }
 
 
@@ -740,6 +746,7 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
     failed = _get_plans_list(summary['failed_plans'])
     skipped = _get_plans_list(summary['skipped_plans'])
     passed = _get_plans_list(summary['passed_plans'])
+    incompleted = _get_plans_list(summary['incompleted_plans'])
     generic_info_table = Table(show_header=True, header_style="bold magenta")
     arches_requested = summary['arches_requested']
     artifacts_url = summary['artifacts'] or ''
@@ -755,10 +762,11 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
         str(len(failed)),
         str(len(skipped)),
         str(len(passed)),
+        str(len(incompleted)),
     )
     console.print(generic_info_table)
 
-    all_plans = sorted(set(errored + failed + skipped + passed))
+    all_plans = sorted(set(errored + failed + skipped + passed + incompleted))
     details_table = Table(show_header=True, header_style="bold magenta")
     for column in ["plan"] + arches_requested:
         details_table.add_column(column)
@@ -774,6 +782,10 @@ def _print_summary_table(summary: dict, format: Optional[WatchFormat], show_deta
                 res = '[red]fail[/red]'
             elif _has_plan(summary['errored_plans'], 'N/A', plan):
                 res = '[yellow]error[/yellow]'
+            elif _has_plan(summary['incompleted_plans'], arch, plan):
+                res = '[yellow]incomplete[/yellow]'
+            elif _has_plan(summary['incompleted_plans'], 'N/A', plan):
+                res = '[yellow]incomplete[/yellow]'
             else:
                 # If for some reason the plan has not been executed for this arch (this can happen after
                 # applying adjust rules) -> don't show anything

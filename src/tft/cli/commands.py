@@ -842,7 +842,7 @@ def watch(
         try:
             workdir = re.search(r'href="(.*)" name="workdir"', session.get(f"{artifacts_url}/results.xml").text)
         except requests.exceptions.SSLError:
-            exit_error("Artifacts unreachable via SSL, do you have RH CA certificates installed?[/yellow]")
+            exit_error("Artifacts unreachable via SSL, do you have RH CA certificates installed?")
 
         if workdir:
             # finish early if reservation is running

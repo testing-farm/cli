@@ -7,6 +7,7 @@ import os
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,9 @@ from dotenv import dotenv_values
 from rich.console import Console
 from ruamel.yaml import YAML  # type: ignore
 from urllib3 import Retry
+from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import NewConnectionError as Urllib3NewConnectionError
+from urllib3.exceptions import SSLError as Urllib3SSLError
 
 from tft.cli.config import settings
 
@@ -331,6 +335,24 @@ def extract_uuid(value: str) -> str:
     exit_error(f"Could not find a valid Testing Farm request id in '{value}'.")
 
 
+class NoSSLRetry(Retry):
+    """Retry subclass that treats SSL errors as permanent failures (no retry)."""
+
+    def increment(self, method=None, url=None, response=None, error=None, **kwargs):  # type: ignore[override]
+        if error and isinstance(error, Urllib3SSLError):
+            raise MaxRetryError(kwargs.get('_pool'), url or '', reason=error)
+        if error and isinstance(error, Urllib3NewConnectionError):
+            cause = error.__cause__ or error.__context__
+            # EAI_NONAME means the hostname could not be resolved at all, which typically
+            # indicates the user is not connected to the VPN. Retrying is pointless.
+            if isinstance(cause, socket.gaierror) and cause.errno == socket.EAI_NONAME:
+                exit_error(f"Failed to resolve '{error.conn.host}', are you connected to the VPN?")
+        if error:
+            msg = f"Connection error, retrying... ({error})"
+            console.print(msg, style="yellow")
+        return super().increment(method=method, url=url, response=response, error=error, **kwargs)
+
+
 class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.timeout = kwargs.pop('timeout', settings.DEFAULT_API_TIMEOUT)
@@ -375,7 +397,7 @@ def install_http_retries(
         "backoff_factor": retry_backoff_factor,
     }
     params[allowed_retry_parameter] = ['HEAD', 'GET', 'POST', 'DELETE', 'PUT']
-    retry_strategy = Retry(**params)
+    retry_strategy = NoSSLRetry(**params)
 
     timeout_adapter = TimeoutHTTPAdapter(timeout=timeout, max_retries=retry_strategy)
 

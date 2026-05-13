@@ -708,6 +708,8 @@ def _get_request_summary(request: dict, session: requests.Session):
             response = session.get(xpath_url)
             if response.status_code == 200:
                 xunit = response.text
+        except requests.exceptions.SSLError:
+            exit_error("Artifacts unreachable via SSL, do you have RH CA certificates installed?")
         except requests.exceptions.ConnectionError:
             console_stderr.print("Could not get xunit results")
     passed_plans, failed_plans, skipped_plans, errored_plans, incompleted_plans = _parse_xunit(

@@ -40,10 +40,10 @@ egrep "^❌ tests failed$" output
 
 # error
 testinfo "error test"
-testing-farm watch --id 50b94e05-1396-473f-819a-9bdbd17e8e54 | tee output
-egrep "^🔎 api https://api.dev.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
+testing-farm watch --id 6bf7320e-0f76-46a2-a452-94f7910e3562 | tee output
+egrep "^🔎 api https://api.dev.testing-farm.io/v0.1/requests/6bf7320e-0f76-46a2-a452-94f7910e3562$" output
 egrep "^📛 pipeline error$" output
-egrep "^Test environment installation failed: reason unknown, please escalate$" output
+egrep "^Failure during Ansible playbook execution$" output
 
 # api url
 testinfo "custom API url"

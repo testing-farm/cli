@@ -23,7 +23,9 @@ settings = LazySettings(
     CONTAINER_SIGN="/.testing-farm-container",
     WATCH_TICK=30,
     DEFAULT_API_TIMEOUT=10,
-    DEFAULT_API_RETRIES=7,
+    # 25 retries covers ~38 minutes of API outage (backoff_factor=1, capped at 120s after retry 7
+    # by urllib3's internal Retry.DEFAULT_BACKOFF_MAX=120)
+    DEFAULT_API_RETRIES=25,
     # default reservation duration in minutes
     DEFAULT_RESERVATION_DURATION=30,
     # should lead to delays of 0.5, 1, 2, 4, 8, 16, 32 seconds

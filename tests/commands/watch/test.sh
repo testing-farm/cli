@@ -50,6 +50,33 @@ testinfo "custom API url"
 TESTING_FARM_API_URL=https://api.stage.testing-farm.io timeout 1 testing-farm watch --id 50b94e05-1396-473f-819a-9bdbd17e8e54 2>/dev/null | tee output
 egrep "^🔎 api https://api.stage.testing-farm.io/v0.1/requests/50b94e05-1396-473f-819a-9bdbd17e8e54$" output
 
+# skip-summary - passed test
+testinfo "skip-summary - passed test"
+testing-farm watch --id 49d77b77-acff-44c6-bcb3-e3bc21b76d1b --skip-summary | tee output
+egrep "^✅ tests passed$" output
+# summary table must not be shown
+! egrep "│" output
+
+# skip-summary - failed test
+testinfo "skip-summary - failed test"
+set +e
+testing-farm watch --id 8a512116-27d1-483a-8d12-c6bb0063f091 --skip-summary | tee output
+test $? == 1
+set -e
+egrep "^❌ tests failed$" output
+# summary table must not be shown
+! egrep "│" output
+
+# skip-summary - error test
+testinfo "skip-summary - error test"
+set +e
+testing-farm watch --id 6bf7320e-0f76-46a2-a452-94f7910e3562 --skip-summary | tee output
+test $? == 2
+set -e
+egrep "^📛 pipeline error$" output
+# summary table must not be shown
+! egrep "│" output
+
 # multihost test
 testinfo "multihost test"
 # start mock server on port 10003
@@ -63,6 +90,13 @@ egrep "^🔎 api http://localhost:10003/v0.1/requests/51335c9e-355e-46ff-a915-76
 egrep "^🚢 artifacts http://localhost:10003/artifacts/51335c9e-355e-46ff-a915-76194898c29d$" output
 egrep "^✅ tests passed$" output
 egrep "^│ /testing-farm/multihost/basic │ pass   │$" output
+
+# skip-summary with mock server
+testinfo "skip-summary with mock server"
+TESTING_FARM_API_URL=http://localhost:10003 testing-farm watch --id 51335c9e-355e-46ff-a915-76194898c29d --skip-summary | tee output
+egrep "^✅ tests passed$" output
+# summary table must not be shown when --skip-summary is used
+! egrep "│" output
 
 # remove temporary directory
 rm -rf $TMPDIR

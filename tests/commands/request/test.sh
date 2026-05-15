@@ -299,6 +299,11 @@ testinfo "test skip-guest-setup"
 testing-farm request --skip-guest-setup --compose Fedora --dry-run | tee output
 tail -n+4 output | jq -r .environments[0].settings.pipeline.skip_guest_setup | egrep '^true$'
 
+# skip-summary
+testinfo "test skip-summary"
+testing-farm request --skip-summary --compose Fedora --dry-run | tee output
+egrep "🔍 Dry run, showing POST json only" output
+
 # worker-image option
 testinfo "worker-image option"
 testing-farm request --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest | tee output

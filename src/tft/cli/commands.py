@@ -327,6 +327,11 @@ OPTION_SKIP_GUEST_SETUP: bool = typer.Option(
     "--skip-guest-setup",
     help="Skip the guest setup phase (e.g. installing packages, running scripts).",
 )
+OPTION_SKIP_SUMMARY: bool = typer.Option(
+    False,
+    "--skip-summary",
+    help="Skip showing the summary table, which requires access to the artifact storage.",
+)
 OPTION_RESERVE: bool = typer.Option(
     False,
     help="Reserve machine after testing, similarly to the `reserve` command.",
@@ -806,6 +811,7 @@ def watch(
     format: Optional[WatchFormat] = typer.Option(WatchFormat.text, help="Output format"),
     autoconnect: bool = typer.Option(True, hidden=True),
     reserve: bool = typer.Option(False, hidden=True),
+    skip_summary: bool = OPTION_SKIP_SUMMARY,
 ):
     """Watch request for completion."""
 
@@ -882,9 +888,10 @@ def watch(
 
         current_state = state
 
-        request_summary = _get_request_summary(request, session)
-        if format == WatchFormat.json:
-            console.print(json.dumps(request_summary, indent=2))
+        if not skip_summary:
+            request_summary = _get_request_summary(request, session)
+            if format == WatchFormat.json:
+                console.print(json.dumps(request_summary, indent=2))
 
         if state == "new":
             _console_print("👶 request is [blue]waiting to be queued[/blue]")
@@ -904,14 +911,16 @@ def watch(
             overall = request["result"]["overall"]
             if overall in ["passed", "skipped"]:
                 _console_print("✅ tests passed", style="green")
-                _print_summary_table(request_summary, format)
+                if not skip_summary:
+                    _print_summary_table(request_summary, format)
                 raise typer.Exit()
 
             if overall in ["failed", "error", "unknown"]:
                 _console_print(f"❌ tests {overall}", style="red")
                 if overall == "error":
                     _console_print(f"{request['result']['summary']}", style="red")
-                _print_summary_table(request_summary, format)
+                if not skip_summary:
+                    _print_summary_table(request_summary, format)
                 raise typer.Exit(code=1)
 
         elif state == "error":
@@ -921,7 +930,8 @@ def watch(
                 else '\n'.join(note['message'] for note in request['notes'])
             )
             _console_print(f"📛 pipeline error\n{msg}", style="red")
-            _print_summary_table(request_summary, format)
+            if not skip_summary:
+                _print_summary_table(request_summary, format)
             raise typer.Exit(code=2)
 
         elif state in ["canceled", "cancel-requested"]:
@@ -929,7 +939,8 @@ def watch(
             raise typer.Exit(code=3)
 
         if no_wait:
-            _print_summary_table(request_summary, format, show_details=False)
+            if not skip_summary:
+                _print_summary_table(request_summary, format, show_details=False)
             raise typer.Exit()
 
         time.sleep(settings.WATCH_TICK)
@@ -1046,6 +1057,7 @@ def request(
     ),
     parallel_limit: Optional[int] = OPTION_PARALLEL_LIMIT,
     skip_guest_setup: bool = OPTION_SKIP_GUEST_SETUP,
+    skip_summary: bool = OPTION_SKIP_SUMMARY,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
     tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
@@ -1394,7 +1406,16 @@ def request(
     request_id = response.json()['id']
 
     # Watch the request and handle reservation
-    watch(context, api_url, request_id, no_wait, reserve=reserve, autoconnect=autoconnect, format=WatchFormat.text)
+    watch(
+        context,
+        api_url,
+        request_id,
+        no_wait,
+        reserve=reserve,
+        autoconnect=autoconnect,
+        format=WatchFormat.text,
+        skip_summary=skip_summary,
+    )
 
 
 def restart(

@@ -11,10 +11,11 @@ import socket
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, NoReturn, Optional, Union
+from typing import Any, Dict, List, NamedTuple, NoReturn, Optional, Union
 
 import pendulum
 import requests
@@ -92,6 +93,33 @@ class OutputFormat(StrEnum):
     @staticmethod
     def available_formats():
         return "text, json, yaml or table"
+
+
+class WhoAmI(NamedTuple):
+    ranch: str
+    user: str
+    token_name: str
+
+
+def whoami(api_url: str, api_token: str) -> WhoAmI:
+    """Get ranch, user and token name from the whoami endpoint."""
+    whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
+    response = requests.get(whoami_url, headers={'Authorization': f'Bearer {api_token}'})
+    data = response.json()
+    return WhoAmI(
+        ranch=data['token']['ranch'],
+        user=data['user']['auth_name'],
+        token_name=data['token']['name'],
+    )
+
+
+def enrich_api_error(message: str, ranch: str) -> str:
+    """Enrich API error message with ranch information and quoted compose names."""
+    # Quote compose name in "Compose X does not exist" pattern
+    message = re.sub(r"Compose (\S+) does not exist", r"Compose '\1' does not exist", message)
+    message = message.replace("does not exist", f"does not exist for '{ranch}' ranch")
+    message = message.replace("all available composes", f"all available composes for '{ranch}' ranch")
+    return message
 
 
 def exit_error(error: str) -> NoReturn:

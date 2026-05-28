@@ -34,6 +34,7 @@ from tft.cli.utils import (
     console,
     console_stderr,
     edit_with_editor,
+    enrich_api_error,
     exit_error,
     extract_uuid,
     handle_401_response,
@@ -43,6 +44,7 @@ from tft.cli.utils import (
     options_to_dict,
     read_glob_paths,
     uuid_valid,
+    whoami,
 )
 
 cli_version: str = importlib.metadata.version("tft-cli")
@@ -1081,6 +1083,7 @@ def request(
     git_available = bool(shutil.which("git"))
 
     api_token = check_token(api_url, api_token)
+    identity = whoami(api_url, api_token)
 
     if not compose and arches != ['x86_64']:
         exit_error(
@@ -1394,8 +1397,10 @@ def request(
         handle_401_response(response)
 
     if response.status_code == 400:
+        message = enrich_api_error((response.json().get('message') or 'Reason unknown.').rstrip('.'), identity.ranch)
         exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"Request is invalid (user {identity.user}, "
+            f"token {identity.token_name}). {message}."
             f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
         )
 
@@ -1500,6 +1505,7 @@ def restart(
     # Determine target configuration (fallback to general settings)
     effective_target_api_url = target_api_url or api_url
     effective_target_api_token = target_api_token or api_token
+    identity = whoami(str(effective_target_api_url), effective_target_api_token)
 
     # Extract the UUID from the request_id string
     _request_id = extract_uuid(request_id)
@@ -1766,8 +1772,10 @@ def restart(
         handle_401_response(response)
 
     if response.status_code == 400:
+        message = enrich_api_error((response.json().get('message') or 'Reason unknown.').rstrip('.'), identity.ranch)
         exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"Request is invalid (user {identity.user}, "
+            f"token {identity.token_name}). {message}."
             f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
         )
 
@@ -2013,6 +2021,7 @@ def reserve(
     check_unexpected_arguments(context, "api_url", "api_token")
 
     api_token = check_token(api_url, api_token)
+    identity = whoami(api_url, api_token)
 
     pool_info = f"via pool [blue]{pool}[/blue]" if pool else ""
     console.print(f"💻 [blue]{compose}[/blue] on [blue]{arch}[/blue] {pool_info}")
@@ -2180,8 +2189,10 @@ def reserve(
         handle_401_response(response)
 
     if response.status_code == 400:
+        message = enrich_api_error((response.json().get('message') or 'Reason unknown.').rstrip('.'), identity.ranch)
         exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
+            f"Request is invalid (user {identity.user}, "
+            f"token {identity.token_name}). {message}."
             f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
         )
 

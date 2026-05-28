@@ -11,10 +11,11 @@ import socket
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, NoReturn, Optional, Union
+from typing import Any, Dict, List, NamedTuple, NoReturn, Optional, Union
 
 import pendulum
 import requests
@@ -94,6 +95,34 @@ class OutputFormat(StrEnum):
         return "text, json, yaml or table"
 
 
+class WhoAmI(NamedTuple):
+    ranch: str
+    user: str
+    token_name: str
+
+
+def whoami(api_url: str, api_token: str) -> WhoAmI:
+    """Get ranch, user and token name from the whoami endpoint.
+
+    Best-effort: this information is only used to make error messages more
+    helpful, so any failure (network error, invalid token, unexpected payload)
+    falls back to ``unknown`` and lets the actual request handle authentication
+    errors.
+    """
+    unknown = WhoAmI(ranch="unknown", user="unknown", token_name="unknown")
+    try:
+        whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
+        response = requests.get(whoami_url, headers=authorization_headers(api_token))
+        data = response.json()
+        return WhoAmI(
+            ranch=data['token']['ranch'],
+            user=data['user']['auth_name'],
+            token_name=data['token']['name'],
+        )
+    except (requests.exceptions.RequestException, requests.exceptions.JSONDecodeError, KeyError, TypeError):
+        return unknown
+
+
 def exit_error(error: str) -> NoReturn:
     """Exit with given error message"""
     console.print(f"⛔ {error}", style="red")
@@ -116,6 +145,40 @@ def handle_401_response(response: requests.Response) -> NoReturn:
     except requests.exceptions.JSONDecodeError:
         pass
     exit_error(f"API token is invalid. See {settings.ONBOARDING_DOCS} for more information.")
+
+
+def handle_400_response(response: requests.Response, api_url: str, api_token: str) -> NoReturn:
+    """Handle 400 Bad Request responses with a helpful, actionable error message.
+
+    The "compose does not exist" case is recognized and fully rephrased by the
+    CLI, pointing the user at the `composes` command for their ranch. Any other
+    error falls back to the raw API message annotated with the identity used.
+
+    The identity is resolved lazily here (only once we actually have a 400 to
+    enrich) so that the common 401/200 paths make no extra `whoami` request.
+    """
+    try:
+        message = response.json().get('message') or 'Reason unknown.'
+    except requests.exceptions.JSONDecodeError:
+        message = 'Reason unknown.'
+
+    identity = whoami(api_url, api_token)
+
+    # Recognize the "compose does not exist" error and rephrase it ourselves.
+    match = re.search(r"Compose (\S+) does not exist", message)
+    if match:
+        compose = match.group(1)
+        for_ranch = f" for the '{identity.ranch}' ranch" if identity.ranch != "unknown" else ""
+        exit_error(
+            f"Compose '{compose}' does not exist{for_ranch} "
+            f"(user {identity.user}, token {identity.token_name}).\n"
+            f"Run `testing-farm composes` to list all available composes{for_ranch}."
+        )
+
+    exit_error(
+        f"Request is invalid (user {identity.user}, token {identity.token_name}). {message.rstrip('.')}."
+        f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
+    )
 
 
 def cmd_output_or_exit(command: str, error: str) -> str:

@@ -419,15 +419,42 @@ class NoSSLRetry(Retry):
 
 
 class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
+    # Re-sending the whole request to recover a broken body read is only harmless for safe methods.
+    BODY_READ_RETRY_METHODS = ('GET', 'HEAD')
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.timeout = kwargs.pop('timeout', settings.DEFAULT_API_TIMEOUT)
+        self.body_read_retries = kwargs.pop('body_read_retries', settings.DEFAULT_API_RETRIES)
 
         super().__init__(*args, **kwargs)
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:  # type: ignore[override]
         kwargs.setdefault('timeout', self.timeout)
 
-        return super().send(request, **kwargs)
+        # Streaming responses are consumed by the caller, so leave the body untouched.
+        if kwargs.get('stream') or request.method not in self.BODY_READ_RETRY_METHODS:
+            return super().send(request, **kwargs)
+
+        # urllib3's Retry only covers establishing the connection and the initial response; it does not
+        # cover reading the response body, which requests does lazily. A connection dropped mid-body
+        # therefore surfaces as a ChunkedEncodingError (IncompleteRead) that escapes the retry logic.
+        # For safe, non-streaming requests, read the body here so such transient read failures are retried too.
+        for attempt in range(self.body_read_retries + 1):
+            response = super().send(request, **kwargs)
+
+            try:
+                # Force the body to be read while we can still retry the request.
+                response.content
+                return response
+
+            except requests.exceptions.ChunkedEncodingError as exc:
+                if attempt >= self.body_read_retries:
+                    raise
+                msg = f"Response body read failed, retrying... ({exc})"
+                console.print(msg, style="yellow")
+
+        # The loop above always returns or raises; this only satisfies the type checker.
+        raise AssertionError("unreachable")
 
 
 def install_http_retries(

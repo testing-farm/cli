@@ -1128,7 +1128,7 @@ def request(
         git_url = re.sub(r"^(?:(?:git\+)?ssh://)?git@([^:/]*)[:/](.*)", r"https://\1/\2", git_url)
 
         # detect git ref if not explicitly provided
-        if context.get_parameter_source("git_ref") != ParameterSource.COMMANDLINE:
+        if context.get_parameter_source("git_ref").name != ParameterSource.COMMANDLINE.name:
             git_ref = cmd_output_or_exit("git rev-parse --abbrev-ref HEAD", "could not autodetect git ref")
 
             # in case we have a commit checked out, not a named branch
@@ -1335,7 +1335,7 @@ def request(
     request["environments"] = environments
     request["settings"] = {}
 
-    forced_pipeline_timeout = context.get_parameter_source("timeout") == ParameterSource.COMMANDLINE
+    forced_pipeline_timeout = context.get_parameter_source("timeout").name == ParameterSource.COMMANDLINE.name
 
     if reserve or pipeline_type or parallel_limit or forced_pipeline_timeout:
         request["settings"]["pipeline"] = {}
@@ -1661,7 +1661,7 @@ def restart(
 
     if test_type == "fmf":
         # The method explained in https://github.com/fastapi/typer/discussions/668
-        if context.get_parameter_source("tmt_path") == ParameterSource.COMMANDLINE:
+        if context.get_parameter_source("tmt_path").name == ParameterSource.COMMANDLINE.name:
             request["test"][test_type]["path"] = tmt_path
 
     # worker image

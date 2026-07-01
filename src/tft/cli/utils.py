@@ -431,7 +431,7 @@ def read_glob_paths(glob_paths: List[str]) -> str:
 
 def check_unexpected_arguments(context: typer.Context, *args: str) -> Union[None, NoReturn]:
     for argument in args:
-        if context.get_parameter_source(argument) == ParameterSource.COMMANDLINE:
+        if context.get_parameter_source(argument).name == ParameterSource.COMMANDLINE.name:
             exit_error(
                 f"Unexpected argument '{context.params.get(argument)}'. "
                 "Please make sure you are passing the parameters correctly."

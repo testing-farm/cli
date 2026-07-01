@@ -287,7 +287,8 @@ testing-farm request --pipeline-type tmt-multihost --compose Fedora --dry-run | 
 tail -n+4 output | jq -r .settings.pipeline.type | egrep 'tmt-multihost'
 
 testing-farm request --pipeline-type invalid --compose Fedora --dry-run 2>&1 | tee output
-egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
+# The error message can span multiple lines in the Rich box, strip │ and newlines, collapse whitespace
+tr -d '\n' < output | sed 's/│//g' | tr -s ' ' | egrep "Invalid value for '--pipeline-type': 'invalid' is not (one of )?'tmt-multihost'"
 
 # parallel-limit
 testinfo "test parallel-limit"

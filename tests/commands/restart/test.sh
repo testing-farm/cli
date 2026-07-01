@@ -79,7 +79,8 @@ testing-farm restart --pipeline-type tmt-multihost https://api.dev.testing-farm.
 egrep "⛔ API token is invalid. See https://docs.testing-farm.io/Testing%20Farm/0.1/onboarding.html for more information." output
 
 testing-farm restart --pipeline-type invalid https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 2>&1 | tee output
-egrep "Invalid value for '--pipeline-type': 'invalid' is not 'tmt-multihost'." output
+# The error message can span multiple lines in the Rich box, strip │ and newlines, collapse whitespace
+tr -d '\n' < output | sed 's/│//g' | tr -s ' ' | egrep "Invalid value for '--pipeline-type': 'invalid' is not (one of )?'tmt-multihost'"
 
 # parallel-limit, just test it is accepted
 testinfo "test parallel-limit"

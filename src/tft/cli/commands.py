@@ -36,6 +36,7 @@ from tft.cli.utils import (
     edit_with_editor,
     exit_error,
     extract_uuid,
+    handle_400_response,
     handle_401_response,
     hw_constraints,
     install_http_retries,
@@ -1394,10 +1395,7 @@ def request(
         handle_401_response(response)
 
     if response.status_code == 400:
-        exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
-            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
-        )
+        handle_400_response(response, api_url, api_token)
 
     if response.status_code != 200:
         print(response.text)
@@ -1766,10 +1764,7 @@ def restart(
         handle_401_response(response)
 
     if response.status_code == 400:
-        exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
-            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
-        )
+        handle_400_response(response, str(effective_target_api_url), effective_target_api_token)
 
     if response.status_code != 200:
         print(response.text)
@@ -2184,10 +2179,7 @@ def reserve(
         handle_401_response(response)
 
     if response.status_code == 400:
-        exit_error(
-            f"Request is invalid. {response.json().get('message') or 'Reason unknown.'}."
-            f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
-        )
+        handle_400_response(response, api_url, api_token)
 
     if response.status_code != 200:
         print(response.text)

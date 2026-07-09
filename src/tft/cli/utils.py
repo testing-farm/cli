@@ -99,17 +99,18 @@ class WhoAmI(NamedTuple):
     ranch: str
     user: str
     token_name: str
+    role: str
 
 
 def whoami(api_url: str, api_token: str) -> WhoAmI:
-    """Get ranch, user and token name from the whoami endpoint.
+    """Get ranch, user, token name and token role from the whoami endpoint.
 
     Best-effort: this information is only used to make error messages more
     helpful, so any failure (network error, invalid token, unexpected payload)
     falls back to ``unknown`` and lets the actual request handle authentication
     errors.
     """
-    unknown = WhoAmI(ranch="unknown", user="unknown", token_name="unknown")
+    unknown = WhoAmI(ranch="unknown", user="unknown", token_name="unknown", role="unknown")
     try:
         whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
         response = requests.get(whoami_url, headers=authorization_headers(api_token))
@@ -118,6 +119,7 @@ def whoami(api_url: str, api_token: str) -> WhoAmI:
             ranch=data['token']['ranch'],
             user=data['user']['auth_name'],
             token_name=data['token']['name'],
+            role=data['token']['role'],
         )
     except (requests.exceptions.RequestException, requests.exceptions.JSONDecodeError, KeyError, TypeError):
         return unknown
@@ -171,12 +173,12 @@ def handle_400_response(response: requests.Response, api_url: str, api_token: st
         for_ranch = f" for the '{identity.ranch}' ranch" if identity.ranch != "unknown" else ""
         exit_error(
             f"Compose '{compose}' does not exist{for_ranch} "
-            f"(user {identity.user}, token {identity.token_name}).\n"
+            f"({identity.role} {identity.user}, token {identity.token_name}).\n"
             f"Run `testing-farm composes` to list all available composes{for_ranch}."
         )
 
     exit_error(
-        f"Request is invalid (user {identity.user}, token {identity.token_name}). {message.rstrip('.')}."
+        f"Request is invalid ({identity.role} {identity.user}, token {identity.token_name}). {message.rstrip('.')}."
         f"\nPlease file an issue to {settings.ISSUE_TRACKER} if unsure."
     )
 

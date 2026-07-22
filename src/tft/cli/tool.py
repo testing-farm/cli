@@ -12,6 +12,25 @@ from tft.cli.config import settings
 
 app = typer.Typer()
 
+
+@app.callback()
+def main(
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        envvar="TESTING_FARM_DEBUG",
+        help="Print the full traceback with local variables on unexpected errors.",
+        rich_help_panel='Environment variables',
+    ),
+) -> None:
+    """Testing Farm CLI."""
+    # Typer reads these attributes when rendering an unhandled exception (in Typer.__call__),
+    # which happens after this callback runs, so flipping them here enables a full traceback.
+    if debug:
+        app.pretty_exceptions_show_locals = True
+        app.pretty_exceptions_short = False
+
+
 app.command()(commands.cancel)
 app.command()(composes)
 app.command(name="list")(listing)

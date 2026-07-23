@@ -348,7 +348,7 @@ def render_table(
         finished_display = format_time_display(finished_dt)
 
         row = [
-            f"[link={artifacts_url}]{request['id']}[/link]" if artifacts_url != '<unavailable>' else '<unavailable>',
+            f"[link={artifacts_url}]{request['id']}[/link]" if artifacts_url != '<unavailable>' else request['id'],
             get_state_icon(request),
             get_ranch_colored(artifacts_url),
             f"[yellow]{request_type_human}[/yellow]",

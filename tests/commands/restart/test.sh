@@ -10,9 +10,10 @@ TMPDIR=$(mktemp -d)
 pushd $TMPDIR
 
 # no request specified
+# case-insensitive: typer >= 0.27 lowercases argument names in error messages
 testinfo "no request id"
 testing-farm restart |& tee output
-egrep "Missing argument 'REQUEST_ID'." output
+egrep -i "Missing argument 'REQUEST_ID'." output
 
 # invalid request id
 testinfo "invalid request request id"

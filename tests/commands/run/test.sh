@@ -10,9 +10,11 @@ TMPDIR=$(mktemp -d)
 pushd "$TMPDIR"
 
 # no command specified
+# case-insensitive + optional '...': typer >= 0.27 lowercases argument names
+# and may omit the '...' suffix for list arguments in error messages
 testinfo "no request id"
 testing-farm run |& tee output
-grep -E "Missing argument 'COMMAND...'." output
+grep -Ei "Missing argument 'COMMAND(\.\.\.)?'." output
 
 # valid command, no token
 testinfo "valid command, no token"

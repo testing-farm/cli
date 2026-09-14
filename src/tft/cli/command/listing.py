@@ -550,6 +550,7 @@ def listing(
     ),
     age: Age = typer.Option(
         "1d",
+        "--age",
         parser=lambda value: Age.from_string(value),
         metavar="AGE",
         help=(

@@ -70,6 +70,13 @@ RESERVE_URL = os.getenv("TESTING_FARM_RESERVE_URL", "https://gitlab.com/testing-
 RESERVE_REF = os.getenv("TESTING_FARM_RESERVE_REF", "main")
 RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref {RESERVE_REF} --test {RESERVE_TEST}"
 
+# tmt gives up on a guest which stays unreachable for `TMT_REBOOT_TIMEOUT` seconds,
+# 10 minutes by default. On a reserved machine the user is free to reboot into an
+# offline upgrade, a leapp run or a slow bare metal boot, and any downtime longer than
+# that default kills the reservation task and releases the machine. Tolerate downtime
+# for as long as the reservation is meant to last.
+RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE = "TMT_REBOOT_TIMEOUT"
+
 # NOTE(mvadkert): note that reservation duration is different per ranch,
 # ignore this fact for now here for reservations
 DEFAULT_PIPELINE_TIMEOUT = 60 * 12
@@ -375,7 +382,11 @@ def _option_reservation_duration(panel: str) -> int:
     return typer.Option(
         settings.DEFAULT_RESERVATION_DURATION,
         "--duration",
-        help="Set the reservation duration in minutes. By default the reservation is for 30 minutes.",
+        help=(
+            "Set the reservation duration in minutes. By default the reservation is for 30 minutes. "
+            "The reserved machine is also allowed to stay unreachable, e.g. while rebooting into an "
+            "offline upgrade, for the whole duration."
+        ),
         rich_help_panel=panel,
     )
 
@@ -532,6 +543,21 @@ def _extend_test_filter_for_reservation(tmt_test_filter: Optional[str]) -> Optio
     return None
 
 
+def _add_reservation_reboot_timeout(environment: Dict[str, Any], duration: int) -> None:
+    """
+    Let the reservation survive guest downtime for the whole reservation duration.
+
+    Keeps the value given by the user via ``--tmt-environment``, if there is one.
+    """
+    if "tmt" not in environment or environment["tmt"] is None:
+        environment["tmt"] = {}
+
+    if "environment" not in environment["tmt"] or environment["tmt"]["environment"] is None:
+        environment["tmt"]["environment"] = {}
+
+    environment["tmt"]["environment"].setdefault(RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE, str(duration * 60))
+
+
 def _add_reservation(
     ssh_public_keys: List[str],
     rules: Dict[str, Any],
@@ -581,6 +607,8 @@ def _add_reservation(
     # add reservation if not already present
     if RESERVE_TMT_DISCOVER_EXTRA_ARGS not in environment["tmt"]["extra_args"]["discover"]:
         environment["tmt"]["extra_args"]["discover"].append(RESERVE_TMT_DISCOVER_EXTRA_ARGS)
+
+    _add_reservation_reboot_timeout(environment, duration)
 
 
 def _contains_compose(environments: List[Dict[str, Any]]):
@@ -2097,6 +2125,8 @@ def reserve(
             environment["tmt"] = {}
 
         environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
+
+    _add_reservation_reboot_timeout(environment, reservation_duration)
 
     if skip_guest_setup:
         if "pipeline" not in environment["settings"]:

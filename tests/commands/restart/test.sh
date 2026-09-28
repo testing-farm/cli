@@ -251,6 +251,27 @@ echo "✅ Secrets correctly removed from non-owned request on restart"
 
 kill $MOCK_PID_SECRETS 2>/dev/null || true
 
+# Test: restart --reserve updates the reboot timeout set for the original reservation
+testinfo "Testing restart --reserve updates TMT_REBOOT_TIMEOUT of the original reservation"
+
+ssh-keygen -t ed25519 -q -f restart-reserve-key -N ""
+
+python3 $FIXTURES_DIR/mock_server.py 8004 &
+MOCK_PID_REBOOT=$!
+sleep 2
+
+TESTING_FARM_API_URL=http://localhost:8004 \
+TESTING_FARM_INTERNAL_API_URL=http://localhost:8004 \
+TESTING_FARM_API_TOKEN=some-token \
+testing-farm restart --dry-run --reserve --duration 480 --ssh-public-key restart-reserve-key.pub \
+    7c1f3b2e-5d4a-4e8b-9a61-0f2d3c4b5a69 | tee output
+
+sed -n '/^{/,$p' output | tr -d '\n' | jq -r '.environments[].variables.TF_RESERVATION_DURATION' | egrep '^480$'
+sed -n '/^{/,$p' output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_REBOOT_TIMEOUT' | egrep '^28800$'
+echo "✅ Reboot timeout follows the new reservation duration on restart"
+
+kill $MOCK_PID_REBOOT 2>/dev/null || true
+
 # test --test option with --reserve extends test filter
 testinfo "test --test option with --reserve extends test filter"
 testing-farm restart --dry-run --reserve --test "my-test" https://api.dev.testing-farm.io/v0.1/requests/40cafaa3-0efa-4abf-a20b-a6ad87e84527 | tee output

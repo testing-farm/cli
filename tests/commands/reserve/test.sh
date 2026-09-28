@@ -111,6 +111,12 @@ testing-farm reserve $ssh_key_option --dry-run --compose Fedora --duration 3600 
 egrep "⏳ Maximum reservation time is 3600 minutes" output
 tail -n+5 output | tr -d '\n' | jq -r '.environments[].variables.TF_RESERVATION_DURATION' | egrep '^3600$'
 tail -n+5 output | tr -d '\n' | jq -r '.settings.pipeline.timeout' | egrep '^3600$'
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_REBOOT_TIMEOUT' | egrep '^216000$'
+
+# test reboot timeout given by the user wins
+testinfo "test user TMT_REBOOT_TIMEOUT is kept"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --duration 3600 --tmt-environment TMT_REBOOT_TIMEOUT=99 | tee output
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_REBOOT_TIMEOUT' | egrep '^99$'
 
 # worker-image option
 testinfo "worker-image option"

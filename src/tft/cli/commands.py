@@ -73,8 +73,9 @@ RESERVE_TMT_DISCOVER_EXTRA_ARGS = f"--insert --how fmf --url {RESERVE_URL} --ref
 # tmt gives up on a guest which stays unreachable for `TMT_REBOOT_TIMEOUT` seconds,
 # 10 minutes by default. On a reserved machine the user is free to reboot into an
 # offline upgrade, a leapp run or a slow bare metal boot, and any downtime longer than
-# that default kills the reservation task and releases the machine. Tolerate downtime
-# for as long as the reservation is meant to last.
+# that default kills the reservation task and releases the machine. The `reserve` command
+# tolerates downtime for as long as the reservation is meant to last. `request --reserve`
+# runs the user's tests first, so it leaves the timeout to the user.
 RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE = "TMT_REBOOT_TIMEOUT"
 
 # NOTE(mvadkert): note that reservation duration is different per ranch,
@@ -378,15 +379,19 @@ def _option_ssh_public_keys(panel: str) -> List[str]:
     )
 
 
-def _option_reservation_duration(panel: str) -> int:
+def _option_reservation_duration(panel: str, reboot_tolerance: bool = False) -> int:
+    help_text = "Set the reservation duration in minutes. By default the reservation is for 30 minutes."
+
+    if reboot_tolerance:
+        help_text += (
+            " The reserved machine is also allowed to stay unreachable, e.g. while rebooting into an "
+            "offline upgrade, for the whole duration."
+        )
+
     return typer.Option(
         settings.DEFAULT_RESERVATION_DURATION,
         "--duration",
-        help=(
-            "Set the reservation duration in minutes. By default the reservation is for 30 minutes. "
-            "The reserved machine is also allowed to stay unreachable, e.g. while rebooting into an "
-            "offline upgrade, for the whole duration."
-        ),
+        help=help_text,
         rich_help_panel=panel,
     )
 
@@ -558,6 +563,27 @@ def _add_reservation_reboot_timeout(environment: Dict[str, Any], duration: int) 
     environment["tmt"]["environment"].setdefault(RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE, str(duration * 60))
 
 
+def _update_reservation_reboot_timeout(
+    environment: Dict[str, Any], duration: int, previous_duration: Optional[str]
+) -> None:
+    """
+    Keep the reboot timeout set by :py:func:`_add_reservation_reboot_timeout` in line with a new duration.
+
+    Restarting a reserved request resubmits its environment, including the timeout set for the
+    original reservation. A value equal to ``previous_duration`` in seconds came from the CLI and
+    follows the new duration, any other value belongs to the user and stays. No timeout is added,
+    tests running before the reservation keep the tmt default unless the user sets one.
+    """
+    tmt_environment = (environment.get("tmt") or {}).get("environment") or {}
+    current_timeout = tmt_environment.get(RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE)
+
+    if current_timeout is None or previous_duration is None or not str(previous_duration).isdigit():
+        return
+
+    if current_timeout == str(int(previous_duration) * 60):
+        tmt_environment[RESERVE_TMT_REBOOT_TIMEOUT_VARIABLE] = str(duration * 60)
+
+
 def _add_reservation(
     ssh_public_keys: List[str],
     rules: Dict[str, Any],
@@ -590,6 +616,7 @@ def _add_reservation(
     if "variables" not in environment or environment["variables"] is None:
         environment["variables"] = {}
 
+    previous_duration = environment["variables"].get("TF_RESERVATION_DURATION")
     environment["variables"].update({"TF_RESERVATION_DURATION": str(duration)})
 
     if debug_reservation:
@@ -608,7 +635,7 @@ def _add_reservation(
     if RESERVE_TMT_DISCOVER_EXTRA_ARGS not in environment["tmt"]["extra_args"]["discover"]:
         environment["tmt"]["extra_args"]["discover"].append(RESERVE_TMT_DISCOVER_EXTRA_ARGS)
 
-    _add_reservation_reboot_timeout(environment, duration)
+    _update_reservation_reboot_timeout(environment, duration, previous_duration)
 
 
 def _contains_compose(environments: List[Dict[str, Any]]):
@@ -1982,7 +2009,7 @@ def reserve(
     api_url: str = ARGUMENT_API_URL,
     api_token: str = ARGUMENT_API_TOKEN,
     ssh_public_keys: List[str] = _option_ssh_public_keys(RESERVE_PANEL_GENERAL),
-    reservation_duration: int = _option_reservation_duration(RESERVE_PANEL_GENERAL),
+    reservation_duration: int = _option_reservation_duration(RESERVE_PANEL_GENERAL, reboot_tolerance=True),
     arch: str = typer.Option(
         "x86_64", help="Hardware platform of the system to be provisioned.", rich_help_panel=RESERVE_PANEL_ENVIRONMENT
     ),

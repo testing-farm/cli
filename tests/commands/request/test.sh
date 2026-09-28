@@ -415,6 +415,8 @@ tail -n+6 output | jq -r .environments[].variables.TF_RESERVATION_DURATION | egr
 testing-farm request --dry-run --reserve --compose Fedora-40 --duration 1800 --no-autoconnect | tee output
 tail -n+6 output | jq -r .settings.pipeline.timeout | egrep "^1800$"
 tail -n+6 output | jq -r .environments[].variables.TF_RESERVATION_DURATION | egrep "^1800$"
+# the user's tests run before the reservation, the reboot timeout is left to the user
+tail -n+6 output | jq -r .environments[].tmt.environment.TMT_REBOOT_TIMEOUT | egrep "^null$"
 
 testing-farm request --dry-run --reserve --compose Fedora-40 --ssh-public-key "${SSH_KEY}.pub" | tee output
 tail -n+6 output | jq -r .environments[].secrets.TF_RESERVATION_AUTHORIZED_KEYS_BASE64 | egrep "^$(base64 -w0 < ${SSH_KEY}.pub)$"

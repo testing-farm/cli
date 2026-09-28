@@ -1,0 +1,15 @@
+{
+    "id": "7c1f3b2e-5d4a-4e8b-9a61-0f2d3c4b5a69",
+    "environments_requested": [
+        {
+            "arch": "x86_64",
+            "os": {"compose": "Fedora-Rawhide"},
+            "variables": {"TF_RESERVATION_DURATION": "30"},
+            "tmt": {
+                "environment": {"TMT_REBOOT_TIMEOUT": "1800"}
+            }
+        }
+    ],
+    "test": {"fmf": {"url": "https://gitlab.com/testing-farm/tests", "ref": "main"}},
+    "settings": {}
+}

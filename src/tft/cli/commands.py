@@ -944,10 +944,11 @@ def watch(
 
         current_state = state
 
+        request_summary = "uninitialized"
         if not skip_summary:
             request_summary = _get_request_summary(request, session)
             if format == WatchFormat.json:
-                console.print(json.dumps(request_summary, indent=2))
+                console.print_json(json.dumps(request_summary))
 
         if state == "new":
             _console_print("👶 request is [blue]waiting to be queued[/blue]")

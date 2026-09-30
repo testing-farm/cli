@@ -77,6 +77,11 @@ egrep "^📛 pipeline error$" output
 # summary table must not be shown
 ! egrep "│" output
 
+# json format - passed test
+testinfo "json format"
+testing-farm watch --id 49d77b77-acff-44c6-bcb3-e3bc21b76d1b --format json | jq -r .overall | tee output
+egrep "^passed$" output
+
 # multihost test
 testinfo "multihost test"
 # start mock server on port 10003

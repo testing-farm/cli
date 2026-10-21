@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
@@ -425,6 +426,9 @@ class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.timeout = kwargs.pop('timeout', settings.DEFAULT_API_TIMEOUT)
         self.body_read_retries = kwargs.pop('body_read_retries', settings.DEFAULT_API_RETRIES)
+        self.body_read_retry_backoff_factor = kwargs.pop(
+            'body_read_retry_backoff_factor', settings.DEFAULT_RETRY_BACKOFF_FACTOR
+        )
 
         super().__init__(*args, **kwargs)
 
@@ -437,7 +441,8 @@ class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
 
         # urllib3's Retry only covers establishing the connection and the initial response; it does not
         # cover reading the response body, which requests does lazily. A connection dropped mid-body
-        # therefore surfaces as a ChunkedEncodingError (IncompleteRead) that escapes the retry logic.
+        # therefore surfaces as a ChunkedEncodingError (IncompleteRead), or, if the read stalls past the
+        # timeout, as a ConnectionError ("Read timed out."), either of which escapes the retry logic.
         # For safe, non-streaming requests, read the body here so such transient read failures are retried too.
         for attempt in range(self.body_read_retries + 1):
             response = super().send(request, **kwargs)
@@ -447,11 +452,17 @@ class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
                 response.content
                 return response
 
-            except requests.exceptions.ChunkedEncodingError as exc:
+            # SSLError subclasses ConnectionError; treat it as fatal mid-body too, consistent with
+            # NoSSLRetry's handling of SSL errors at connect time.
+            except requests.exceptions.SSLError:
+                raise
+
+            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError) as exc:
                 if attempt >= self.body_read_retries:
                     raise
                 msg = f"Response body read failed, retrying... ({exc})"
                 console.print(msg, style="yellow")
+                time.sleep(min(self.body_read_retry_backoff_factor * 2**attempt, 120))
 
         # The loop above always returns or raises; this only satisfies the type checker.
         raise AssertionError("unreachable")
@@ -491,7 +502,12 @@ def install_http_retries(
     params[allowed_retry_parameter] = ['HEAD', 'GET', 'POST', 'DELETE', 'PUT']
     retry_strategy = NoSSLRetry(**params)
 
-    timeout_adapter = TimeoutHTTPAdapter(timeout=timeout, max_retries=retry_strategy)
+    timeout_adapter = TimeoutHTTPAdapter(
+        timeout=timeout,
+        body_read_retries=retries,
+        body_read_retry_backoff_factor=retry_backoff_factor,
+        max_retries=retry_strategy,
+    )
 
     session.mount('https://', timeout_adapter)
     session.mount('http://', timeout_adapter)

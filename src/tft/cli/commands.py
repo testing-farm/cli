@@ -468,41 +468,29 @@ def _handle_reservation(session, api_url: str, request_id: str, autoconnect: boo
             exit_error(f"Pipeline log was empty. Please file an issue to {settings.ISSUE_TRACKER}.")
 
     except requests.exceptions.SSLError:
-        exit_error(
-            textwrap.dedent(
-                f"""
+        exit_error(textwrap.dedent(f"""
             Failed to access Testing Farm artifacts because of SSL validation error.
             If you use Red Hat Ranch please make sure you have Red Hat CA certificates installed.
             Otherwise file an issue to {settings.ISSUE_TRACKER}.
-        """
-            )
-        )
+        """))
         return
 
     except requests.exceptions.ConnectionError:
-        exit_error(
-            textwrap.dedent(
-                f"""
+        exit_error(textwrap.dedent(f"""
             Failed to access Testing Farm artifacts.
             If you use Red Hat Ranch please make sure you are connected to the VPN.
             Otherwise file an issue to {settings.ISSUE_TRACKER}.
-        """
-            )
-        )
+        """))
         return
 
     # Extract guest hostnames/IPs from pipeline log (supports single-host and multihost)
     guests = get_guest_address(pipeline_log)
 
     if not guests:
-        exit_error(
-            textwrap.dedent(
-                f"""
+        exit_error(textwrap.dedent(f"""
             No guests found to connect to. This is unexpected, please file an issue
             to {settings.ISSUE_TRACKER}.
-        """
-            )
-        )
+        """))
 
     if len(guests) > 1:
         console.print("🌎 Multiple guests found, please connect to them manually:")
@@ -2315,39 +2303,27 @@ def reserve(
                     exit_error(f"Pipeline log was empty. Please file an issue to {settings.ISSUE_TRACKER}.")
 
             except requests.exceptions.SSLError:
-                exit_error(
-                    textwrap.dedent(
-                        f"""
+                exit_error(textwrap.dedent(f"""
                     Failed to access Testing Farm artifacts because of SSL validation error.
                     If you use Red Hat Ranch please make sure you have Red Hat CA certificates installed.
                     Otherwise file an issue to {settings.ISSUE_TRACKER}.
-                """
-                    )
-                )
+                """))
                 return
 
             except requests.exceptions.ConnectionError:
-                exit_error(
-                    textwrap.dedent(
-                        f"""
+                exit_error(textwrap.dedent(f"""
                     Failed to access Testing Farm artifacts.
                     If you use Red Hat Ranch please make sure you are connected to the VPN.
                     Otherwise file an issue to {settings.ISSUE_TRACKER}.
-                """
-                    )
-                )
+                """))
                 return
 
             if 'Result of testing: ERROR' in pipeline_log:
-                exit_error(
-                    textwrap.dedent(
-                        f"""
+                exit_error(textwrap.dedent(f"""
                     Failed to run reservation task.
                     Check status page {settings.STATUS_PAGE} for outages.
                     File an issue to {settings.ISSUE_TRACKER} if needed.
-                """
-                    )
-                )
+                """))
 
             if '[testing-farm-request] Cancelling pipeline' in pipeline_log:
                 progress.stop()
@@ -2368,14 +2344,10 @@ def reserve(
             time.sleep(settings.WATCH_TICK)
 
     if not guests:
-        exit_error(
-            textwrap.dedent(
-                f"""
+        exit_error(textwrap.dedent(f"""
             No guests found to connect to. This is unexpected, please file an issue
             to {settings.ISSUE_TRACKER}.
-        """
-            )
-        )
+        """))
 
     if len(guests) > 1:
         console.print("🌎 Multiple guests found, please connect to them manually:")

@@ -14,7 +14,7 @@ from rich.syntax import Syntax
 from rich.table import Table  # type: ignore
 from ruamel.yaml import YAML  # type: ignore
 
-from tft.cli.commands import ARGUMENT_API_TOKEN, ARGUMENT_API_URL
+from tft.cli.commands import ARGUMENT_API_TOKEN, ARGUMENT_API_URL, check_token
 from tft.cli.config import settings
 from tft.cli.utils import (
     OutputFormat,
@@ -118,11 +118,11 @@ def composes(
     session = requests.Session()
     install_http_retries(session)
 
-    # check for token
-    if not api_token and not ranch:
-        exit_error("No API token found and no ranch specified. Cannot determine ranch.")
+    # If ranch is not provided, we need a token to determine it
+    if not ranch:
+        api_token = check_token(api_url, api_token)
 
-    # Validate token if provided
+    # Determine ranch from token if not explicitly provided
     if api_token and not ranch:
         whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
         try:

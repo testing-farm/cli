@@ -61,7 +61,9 @@ goss:  ## Run goss inside the container
 		exit 1; \
 	fi
 	if ! command -v goss; then \
-		wget -O /usr/bin/goss https://github.com/goss-org/goss/releases/download/v0.4.9/goss-linux-amd64; \
+		wget -O /tmp/goss.tar.gz "https://github.com/goss-org/goss/releases/download/v0.4.10/goss_0.4.10_linux_x86_64.tar.gz"; \
+		echo "26e365428946294bcec0c61d867bb3c8349f39feb3d0e6f59084e98632785cc7  /tmp/goss.tar.gz" | sha256sum -c -; \
+		tar -xzf /tmp/goss.tar.gz -C /usr/bin goss; \
 		chmod +rx /usr/bin/goss; \
 	fi
 	cd container && CLI_VERSION=$(CLI_VERSION) goss validate

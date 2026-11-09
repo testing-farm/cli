@@ -61,7 +61,7 @@ goss:  ## Run goss inside the container
 		exit 1; \
 	fi
 	if ! command -v goss; then \
-		wget -O /usr/bin/goss https://github.com/goss-org/goss/releases/download/v0.4.9/goss-linux-amd64; \
+		wget -O /usr/bin/goss https://testing-farm-public.s3.amazonaws.com/goss/v0.4.10/goss-linux-x86_64; \
 		chmod +rx /usr/bin/goss; \
 	fi
 	cd container && CLI_VERSION=$(CLI_VERSION) goss validate

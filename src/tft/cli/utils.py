@@ -1,7 +1,9 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import glob
+import gzip
 import itertools
 import os
 import re
@@ -130,6 +132,35 @@ def exit_error(error: str) -> NoReturn:
     """Exit with given error message"""
     console.print(f"⛔ {error}", style="red")
     raise typer.Exit(code=255)
+
+
+def recipe_to_request_value(recipe: str) -> str:
+    """
+    Convert the value of the `--recipe` option to the value of the `test.fmf.recipe` request field.
+
+    An `http(s)://` URL is passed as is. Anything else is a path to a local tmt recipe file, which
+    is gzipped and base64 encoded.
+    """
+
+    if re.match(r'^https?://', recipe):
+        return recipe
+
+    path = os.path.expanduser(recipe)
+
+    if not os.path.isfile(path):
+        exit_error(f"Recipe file '{recipe}' does not exist or is not a file.")
+
+    try:
+        with open(path, 'rb') as f:
+            content = f.read()
+    except OSError as exc:
+        exit_error(f"Could not read recipe file '{recipe}': {exc}")
+    else:
+        if not content.strip():
+            exit_error(f"Recipe file '{recipe}' is empty.")
+
+        # mtime=0 keeps the output reproducible for the same input
+        return base64.b64encode(gzip.compress(content, mtime=0)).decode('ascii')
 
 
 def handle_401_response(response: requests.Response) -> NoReturn:

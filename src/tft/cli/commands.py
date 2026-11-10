@@ -43,6 +43,7 @@ from tft.cli.utils import (
     normalize_multistring_option,
     options_to_dict,
     read_glob_paths,
+    recipe_to_request_value,
     uuid_valid,
 )
 
@@ -205,6 +206,18 @@ OPTION_TMT_TEST_FILTER: Optional[str] = typer.Option(
         'Apply an advanced filter using key:value pairs and logical operators to filter tests. '
         'Passed as `--filter` option to the `tmt test ls` command. '
         'See `pydoc fmf.filter` for detailed documentation on the syntax.'
+    ),
+    rich_help_panel=REQUEST_PANEL_TMT,
+)
+OPTION_TMT_RECIPE: Optional[str] = typer.Option(
+    None,
+    "--recipe",
+    metavar="PATH_OR_URL",
+    help=(
+        'Run a tmt recipe instead of selecting plans and tests from the repository. '
+        'Accepts a path to a local YAML file or an `http(s)://` URL to a YAML file, optionally gzipped. '
+        'The `recipe.yaml` file in the tmt run directory of a finished request is a recipe. '
+        'Cannot be combined with `--plan`, `--plan-filter`, `--test` or `--test-filter`.'
     ),
     rich_help_panel=REQUEST_PANEL_TMT,
 )
@@ -516,6 +529,17 @@ def _localhost_ingress_rule(session: requests.Session) -> str:
 
     else:
         exit_error(f"Got {get_ip.status_code} while checking {settings.PUBLIC_IP_CHECKER_URL}")
+
+
+def _check_recipe_conflicts(**selectors: Optional[str]) -> None:
+    """
+    Exit with an error if the tmt recipe is combined with plan or test selection options.
+    """
+
+    used = [f"'--{name.replace('_', '-')}'" for name, value in selectors.items() if value]
+
+    if used:
+        exit_error(f"The '--recipe' option cannot be combined with {', '.join(used)}.")
 
 
 def _extend_test_name_for_reservation(tmt_test_name: Optional[str]) -> Optional[str]:
@@ -1039,6 +1063,7 @@ def request(
     tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
     tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
     tmt_test_filter: Optional[str] = OPTION_TMT_TEST_FILTER,
+    tmt_recipe: Optional[str] = OPTION_TMT_RECIPE,
     tmt_path: str = OPTION_TMT_PATH,
     sti_playbooks: Optional[List[str]] = typer.Option(
         None,
@@ -1127,6 +1152,15 @@ def request(
 
     api_token = check_token(api_url, api_token)
 
+    if tmt_recipe:
+        _check_recipe_conflicts(
+            plan=tmt_plan_name, plan_filter=tmt_plan_filter, test=tmt_test_name, test_filter=tmt_test_filter
+        )
+        if reserve:
+            exit_error("The '--recipe' option cannot be combined with '--reserve'.")
+        if sanity:
+            exit_error("The '--recipe' option cannot be combined with '--sanity'.")
+
     if not compose and arches != ['x86_64']:
         exit_error(
             "Without compose the tests run against a container image specified in the plan. "
@@ -1191,6 +1225,9 @@ def request(
     # make typing happy
     assert git_url is not None
 
+    if tmt_recipe and test_type != "fmf":
+        exit_error("The '--recipe' option is compatible only with 'tmt' tests.")
+
     # STI is not supported against a container
     if test_type == "sti" and compose == "container":
         exit_error("container based testing is not available for 'sti' test type")
@@ -1202,7 +1239,7 @@ def request(
         console.print(f"💻 [blue]{compose or 'container image in plan'}[/blue] on [blue]{arch}[/blue] {pool_info}")
 
     # test details
-    test = TestTMT if test_type == "fmf" else TestSTI
+    test = (TestTMT if test_type == "fmf" else TestSTI).copy()
     test["url"] = git_url
     test["ref"] = git_ref
 
@@ -1226,6 +1263,9 @@ def request(
             test["test_filter"] = _extend_test_filter_for_reservation(tmt_test_filter)
         else:
             test["test_filter"] = tmt_test_filter
+
+    if tmt_recipe:
+        test["recipe"] = recipe_to_request_value(tmt_recipe)
 
     if sti_playbooks:
         test["playbooks"] = sti_playbooks
@@ -1490,6 +1530,7 @@ def restart(
     tmt_plan_filter: Optional[str] = OPTION_TMT_PLAN_FILTER,
     tmt_test_name: Optional[str] = OPTION_TMT_TEST_NAME,
     tmt_test_filter: Optional[str] = OPTION_TMT_TEST_FILTER,
+    tmt_recipe: Optional[str] = OPTION_TMT_RECIPE,
     tmt_path: Optional[str] = OPTION_TMT_PATH,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
@@ -1542,6 +1583,11 @@ def restart(
     # Determine target configuration (fallback to general settings)
     effective_target_api_url = target_api_url or api_url
     effective_target_api_token = target_api_token or api_token
+
+    if tmt_recipe:
+        _check_recipe_conflicts(
+            plan=tmt_plan_name, plan_filter=tmt_plan_filter, test=tmt_test_name, test_filter=tmt_test_filter
+        )
 
     # Extract the UUID from the request_id string
     _request_id = extract_uuid(request_id)
@@ -1700,6 +1746,34 @@ def restart(
         if test_type == "sti":
             exit_error("The '--plan-filter' option is compabitble only with 'tmt` tests.")
         request["test"][test_type]["plan_filter"] = tmt_plan_filter
+
+    # A recipe replaces plan and test selection and the API rejects both in one request
+    test_section = request["test"][test_type]
+    selectors = ("name", "plan_filter", "test_name", "test_filter")
+
+    if tmt_recipe:
+        if test_type == "sti":
+            exit_error("The '--recipe' option is compatible only with 'tmt' tests.")
+        for key in selectors:
+            test_section.pop(key, None)
+        test_section["recipe"] = recipe_to_request_value(tmt_recipe)
+    elif test_section.get("recipe") and (tmt_plan_name or tmt_plan_filter or tmt_test_name or tmt_test_filter):
+        console.print(
+            "⚠️ [yellow]The request uses a tmt recipe. Dropping it, as it cannot be combined with "
+            "plan and test selection options.[/yellow]"
+        )
+        del test_section["recipe"]
+
+    # The API hides the recipe from users who do not own the request
+    if test_section.get("recipe") == "hidden":
+        exit_error(
+            "The request uses a tmt recipe, which is hidden because you are not the owner of the request. "
+            "Use '--recipe' to provide one, or select plans and tests with '--plan', '--plan-filter', "
+            "'--test' or '--test-filter'."
+        )
+
+    if reserve and test_section.get("recipe"):
+        exit_error("The tmt recipe of the request cannot be combined with '--reserve'.")
 
     if test_type == "fmf":
         # The method explained in https://github.com/fastapi/typer/discussions/668

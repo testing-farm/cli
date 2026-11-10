@@ -136,6 +136,15 @@ By default the execution will use `container` provisioner and the default `tmt` 
 List of composes for Public Ranch can be found https://api.dev.testing-farm.io/v0.1/composes[here].
 ====
 
+To rerun a finished request with an edited https://tmt.readthedocs.io/en/stable/guide.html#recipes[tmt recipe], take the `recipe.yaml` file from the tmt run directory in the request artifacts and pass it with `--recipe`.
+The option accepts a path to a local file or an `http(s)://` URL, and works with `request` and `restart`.
+It cannot be combined with `--plan`, `--plan-filter`, `--test` or `--test-filter`.
+
+[source,shell]
+....
+testing-farm request --recipe recipe.yaml
+....
+
 See the `--help` for more options.
 
 === Watch an existing request

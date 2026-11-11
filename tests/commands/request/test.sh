@@ -453,5 +453,21 @@ testing-farm request --dry-run --compose Fedora --hardware compatible.distro='rh
 tail -n+4 output | jq -r '.environments[].hardware.compatible.distro[0]' | egrep '^rhel-8.6$'
 tail -n+4 output | jq -r '.environments[].hardware.compatible.distro[1]' | egrep '^rhel-8.7$'
 
+# test --policy sets TMT_POLICY
+testinfo "test --policy sets TMT_POLICY"
+testing-farm request --dry-run --compose Fedora-40 --policy my-policy | tee output
+tail -n+4 output | jq -r '.environments[].tmt.environment.TMT_POLICY' | egrep '^my-policy$'
+
+# test --policy keeps other tmt environment variables and wins over TMT_POLICY
+testinfo "test --policy wins over --tmt-environment TMT_POLICY"
+testing-farm request --dry-run --compose Fedora-40 --tmt-environment FOO=bar --tmt-environment TMT_POLICY=other --policy my-policy | tee output
+tail -n+4 output | jq -r '.environments[].tmt.environment.TMT_POLICY' | egrep '^my-policy$'
+tail -n+4 output | jq -r '.environments[].tmt.environment.FOO' | egrep '^bar$'
+
+# test --policy value with spaces
+testinfo "test --policy value with spaces"
+testing-farm request --dry-run --compose Fedora-40 --policy "my policy" | tee output
+tail -n+4 output | jq -r '.environments[].tmt.environment.TMT_POLICY' | egrep '^my policy$'
+
 # remove temporary directory
 rm -rf $TMPDIR

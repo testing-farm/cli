@@ -118,6 +118,12 @@ testinfo "test user TMT_REBOOT_TIMEOUT is kept"
 testing-farm reserve $ssh_key_option --dry-run --compose Fedora --duration 3600 --tmt-environment TMT_REBOOT_TIMEOUT=99 | tee output
 tail -n+5 output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_REBOOT_TIMEOUT' | egrep '^99$'
 
+# test --policy sets TMT_POLICY and keeps the reboot timeout
+testinfo "test --policy sets TMT_POLICY"
+testing-farm reserve $ssh_key_option --dry-run --compose Fedora --policy my-policy | tee output
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_POLICY' | egrep '^my-policy$'
+tail -n+5 output | tr -d '\n' | jq -r '.environments[].tmt.environment.TMT_REBOOT_TIMEOUT' | egrep '^1800$'
+
 # worker-image option
 testinfo "worker-image option"
 testing-farm reserve --dry-run --compose Fedora --worker-image quay.io/testing-farm/worker:latest | tee output

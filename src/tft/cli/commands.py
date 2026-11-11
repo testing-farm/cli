@@ -8,6 +8,7 @@ import ipaddress
 import json
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -363,6 +364,12 @@ OPTION_TMT_ENVIRONMENT: Optional[List[str]] = typer.Option(
         "Used to configure tmt report plugins like reportportal or polarion. "
         "The @ prefix marks a yaml file to load."
     ),
+)
+OPTION_POLICY: Optional[str] = typer.Option(
+    None,
+    "--policy",
+    metavar="name",
+    help="Shortcut for `--tmt-environment TMT_POLICY=name`. Overrides `TMT_POLICY` given via `--tmt-environment`.",
 )
 
 
@@ -1068,6 +1075,7 @@ def request(
     variables: Optional[List[str]] = OPTION_VARIABLES,
     secrets: Optional[List[str]] = OPTION_SECRETS,
     tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
+    policy: Optional[str] = OPTION_POLICY,
     no_wait: bool = typer.Option(False, help="Skip waiting for request completion."),
     worker_image: Optional[str] = OPTION_WORKER_IMAGE,
     worker_config_image: Optional[str] = OPTION_WORKER_CONFIG_IMAGE,
@@ -1278,6 +1286,9 @@ def request(
 
         if repository_file:
             environment["artifacts"].extend(artifacts("repository-file", repository_file))
+
+        if policy:
+            tmt_environment = [*(tmt_environment or []), f"TMT_POLICY={shlex.quote(policy)}"]
 
         if tmt_environment:
             environment["tmt"].update({"environment": options_to_dict("tmt environment variables", tmt_environment)})
@@ -2017,6 +2028,7 @@ def reserve(
     repository_file: List[str] = OPTION_REPOSITORY_FILE,
     redhat_brew_build: List[str] = OPTION_REDHAT_BREW_BUILD,
     tmt_environment: Optional[List[str]] = OPTION_TMT_ENVIRONMENT,
+    policy: Optional[str] = OPTION_POLICY,
     tmt_discover: Optional[List[str]] = _generate_tmt_extra_args("discover"),
     tmt_prepare: Optional[List[str]] = _generate_tmt_extra_args("prepare"),
     tmt_report: Optional[List[str]] = _generate_tmt_extra_args("report"),
@@ -2135,6 +2147,9 @@ def reserve(
 
         if tmt_finish:
             environment["tmt"]["extra_args"]["finish"] = tmt_finish
+
+    if policy:
+        tmt_environment = [*(tmt_environment or []), f"TMT_POLICY={shlex.quote(policy)}"]
 
     if tmt_environment:
         if "tmt" not in environment:

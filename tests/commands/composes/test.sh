@@ -20,7 +20,8 @@ grep -E "^⛔ API token is invalid" output
 # invalid ranch
 testinfo "invalid ranch"
 testing-farm composes --ranch whatever |& tee output
-grep -E "Invalid value for '--ranch': 'whatever' is not one of 'public', 'redhat'." output
+# typer wraps long error messages and newer versions prefix them with `Value error, `
+tr -d '\n' < output | sed 's/│//g' | tr -s ' ' | egrep "Invalid value for '--ranch': (Value error, )?'whatever' is not one of 'public', 'redhat'."
 
 # use the developer API
 export TESTING_FARM_API_URL=http://localhost:8001

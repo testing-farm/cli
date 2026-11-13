@@ -85,6 +85,15 @@ def test_local_file_is_gzipped_and_base64_encoded(recipe_file: Path) -> None:
     assert gzip.decompress(base64.b64decode(value)).decode() == RECIPE
 
 
+def test_gzipped_local_file_is_not_gzipped_again(tmp_path: Path) -> None:
+    path = tmp_path / "recipe.yaml.gz"
+    path.write_bytes(gzip.compress(RECIPE.encode()))
+
+    value = recipe_to_request_value(str(path))
+
+    assert gzip.decompress(base64.b64decode(value)).decode() == RECIPE
+
+
 def test_missing_file(tmp_path: Path) -> None:
     result = runner.invoke(app, _request_args("--recipe", str(tmp_path / "missing.yaml")))
 
@@ -118,6 +127,50 @@ def test_request_with_local_file(recipe_file: Path) -> None:
     assert result.exit_code == 0, result.output
     recipe = _dry_run_json(result.output)["test"]["fmf"]["recipe"]
     assert gzip.decompress(base64.b64decode(recipe)).decode() == RECIPE
+
+
+def test_request_with_gzipped_local_file(tmp_path: Path) -> None:
+    path = tmp_path / "recipe.yaml.gz"
+    path.write_bytes(gzip.compress(RECIPE.encode()))
+
+    result = runner.invoke(app, _request_args("--recipe", str(path)))
+
+    assert result.exit_code == 0, result.output
+    recipe = _dry_run_json(result.output)["test"]["fmf"]["recipe"]
+    assert gzip.decompress(base64.b64decode(recipe)).decode() == RECIPE
+
+
+def test_restart_with_gzipped_local_file(tmp_path: Path) -> None:
+    path = tmp_path / "recipe.yaml.gz"
+    path.write_bytes(gzip.compress(RECIPE.encode()))
+
+    result = _restart(_restart_args("--recipe", str(path)), {})
+
+    assert result.exit_code == 0, result.output
+    recipe = _dry_run_json(result.output)["test"]["fmf"]["recipe"]
+    assert gzip.decompress(base64.b64decode(recipe)).decode() == RECIPE
+
+
+def test_restart_with_local_file(recipe_file: Path) -> None:
+    result = _restart(_restart_args("--recipe", str(recipe_file)), {})
+
+    assert result.exit_code == 0, result.output
+    recipe = _dry_run_json(result.output)["test"]["fmf"]["recipe"]
+    assert gzip.decompress(base64.b64decode(recipe)).decode() == RECIPE
+
+
+@pytest.mark.parametrize("command", [["run", "--dry-run", "--", "true"], ["reserve", "--dry-run"]])
+def test_request_does_not_leak_run_or_reserve_test(command: List[str]) -> None:
+    first = runner.invoke(app, command)
+    assert first.exit_code == 0, first.output
+
+    result = runner.invoke(app, _request_args("--recipe", "https://example.com/recipe.yaml"))
+
+    assert result.exit_code == 0, result.output
+    fmf = _dry_run_json(result.output)["test"]["fmf"]
+    assert fmf.get("name") is None
+    assert fmf["recipe"] == "https://example.com/recipe.yaml"
+    assert fmf["url"] == "https://example.com/repo"
 
 
 def test_request_without_recipe() -> None:

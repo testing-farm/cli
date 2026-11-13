@@ -3,6 +3,7 @@
 
 import base64
 import codecs
+import copy
 import importlib.metadata
 import ipaddress
 import json
@@ -1410,7 +1411,7 @@ def request(
             environment["settings"]["pipeline"]["skip_guest_setup"] = True
 
     # create final request
-    request = TestingFarmRequestV1
+    request = copy.deepcopy(TestingFarmRequestV1)
     if test_type == "fmf":
         test["path"] = tmt_path
         request["test"]["fmf"] = test
@@ -1926,9 +1927,9 @@ def run(
     api_token = check_token(api_url, api_token)
 
     # create request
-    request = TestingFarmRequestV1
+    request = copy.deepcopy(TestingFarmRequestV1)
 
-    test = TestTMT
+    test = TestTMT.copy()
     test["url"] = RUN_REPO
     test["ref"] = "main"
     test["name"] = "/testing-farm/sanity"
@@ -2135,7 +2136,7 @@ def reserve(
     console.print(f"💻 [blue]{compose}[/blue] on [blue]{arch}[/blue] {pool_info}")
 
     # test details
-    test = TestTMT
+    test = TestTMT.copy()
     test["url"] = RESERVE_URL
     test["ref"] = git_ref or RESERVE_REF
     test["name"] = RESERVE_PLAN
@@ -2256,7 +2257,7 @@ def reserve(
     environment["secrets"] = {"TF_RESERVATION_AUTHORIZED_KEYS_BASE64": authorized_keys_bytes.decode("utf-8")}
 
     # create final request
-    request = TestingFarmRequestV1
+    request = copy.deepcopy(TestingFarmRequestV1)
     request["test"]["fmf"] = test
 
     # worker image

@@ -134,12 +134,15 @@ def exit_error(error: str) -> NoReturn:
     raise typer.Exit(code=255)
 
 
+GZIP_MAGIC = b'\x1f\x8b'
+
+
 def recipe_to_request_value(recipe: str) -> str:
     """
     Convert the value of the `--recipe` option to the value of the `test.fmf.recipe` request field.
 
     An `http(s)://` URL is passed as is. Anything else is a path to a local tmt recipe file, which
-    is gzipped and base64 encoded.
+    is gzipped, unless it already is, and base64 encoded.
     """
 
     if re.match(r'^https?://', recipe):
@@ -156,11 +159,15 @@ def recipe_to_request_value(recipe: str) -> str:
     except OSError as exc:
         exit_error(f"Could not read recipe file '{recipe}': {exc}")
     else:
-        if not content.strip():
+        if not content.strip() and not content.startswith(GZIP_MAGIC):
             exit_error(f"Recipe file '{recipe}' is empty.")
 
-        # mtime=0 keeps the output reproducible for the same input
-        return base64.b64encode(gzip.compress(content, mtime=0)).decode('ascii')
+        # Keep already gzipped content as is, the worker decompresses the recipe only once
+        if not content.startswith(GZIP_MAGIC):
+            # mtime=0 keeps the output reproducible for the same input
+            content = gzip.compress(content, mtime=0)
+
+        return base64.b64encode(content).decode('ascii')
 
 
 def handle_401_response(response: requests.Response) -> NoReturn:

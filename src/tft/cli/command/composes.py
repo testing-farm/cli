@@ -118,12 +118,10 @@ def composes(
     session = requests.Session()
     install_http_retries(session)
 
-    # If ranch is not provided, we need a token to determine it
-    if not ranch:
-        api_token = check_token(api_url, api_token)
-
     # Determine ranch from token if not explicitly provided
-    if api_token and not ranch:
+    if not ranch:
+        api_token = check_token(api_url, api_token, hint="Or use `--ranch` to list composes without a token.")
+
         whoami_url = urllib.parse.urljoin(api_url, "v0.1/whoami")
         try:
             with Progress(SpinnerColumn(), transient=True, console=console_stderr) as progress:

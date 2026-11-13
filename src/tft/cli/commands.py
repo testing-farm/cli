@@ -996,7 +996,7 @@ def version():
     console.print(f"{cli_version}")
 
 
-def check_token(api_url: str, api_token: Optional[str]):
+def check_token(api_url: str, api_token: Optional[str], hint: Optional[str] = None):
     """Check for API token, falling back to keyring if not provided. Exits on failure."""
 
     running_in_container = os.path.exists(settings.CONTAINER_SIGN)
@@ -1016,6 +1016,8 @@ def check_token(api_url: str, api_token: Optional[str]):
         message = "No API token found, export `TESTING_FARM_API_TOKEN` environment variable."
         if not running_in_container:
             message += f" Or store it in keyring using `keyring set {api_url} api-token`."
+        if hint:
+            message += f" {hint}"
         exit_error(message)
 
     return api_token
